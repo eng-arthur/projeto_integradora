@@ -47,10 +47,6 @@ function iniciarMonitoramento() {
       
       // Carrega histórico
       carregarHistorico();
-      
-      // Atualiza títulos
-      document.querySelector('.card h1').textContent = `📍 ${pacienteNome} - Tempo Real`;
-      document.querySelector('.historico-container h1').textContent = `📊 ${pacienteNome} - Histórico`;
     }
   });
 }
@@ -87,7 +83,7 @@ function carregarTempoReal() {
   });
 }
 
-// 3. CARREGA HISTÓRICO
+// 3. CARREGA HISTÓRICO (VERSÃO CORRIGIDA PARA SUA ESTRUTURA)
 function carregarHistorico() {
   if (!pacienteNome) {
     tabelaCorpo.innerHTML = `
@@ -104,71 +100,97 @@ function carregarHistorico() {
   
   onValue(historicoRef, (snapshot) => {
     dadosHistorico = snapshot.val();
-    console.log("📚 Dados históricos:", dadosHistorico);
+    console.log("📚 HISTÓRICO BRUTO:", dadosHistorico);
     
-    atualizarTabelaHistorico();
+    if (!dadosHistorico) {
+      tabelaCorpo.innerHTML = `
+        <tr>
+          <td colspan="4" style="text-align: center; padding: 40px;">
+            📭 Nenhum histórico disponível
+          </td>
+        </tr>
+      `;
+      return;
+    }
+    
+    // Processa o histórico
+    processarHistorico();
   });
 }
 
-// 4. ATUALIZA A TABELA COM FILTROS
-function atualizarTabelaHistorico() {
-  if (!dadosHistorico) {
-    tabelaCorpo.innerHTML = `
-      <tr>
-        <td colspan="4" style="text-align: center; padding: 40px;">
-          📭 Nenhum histórico disponível
-        </td>
-      </tr>
-    `;
-    return;
-  }
-  
+// 4. PROCESSADOR DE HISTÓRICO - ESPECÍFICO PARA SUA ESTRUTURA
+function processarHistorico() {
   const sensorSelecionado = selectSensor.value;
   let todosRegistros = [];
   
-  // FUNÇÃO PARA ADICIONAR REGISTRO
-  const addRegistro = (timestamp, tipo, valor) => {
-    todosRegistros.push({
-      timestamp: timestamp,
-      tipo: tipo,
-      valor: valor,
-      dataFormatada: formatarTimestamp(timestamp)
-    });
-  };
-  
-  // Processa cada sensor
+  // ========== FREQUÊNCIA CARDÍACA ==========
   if (dadosHistorico.freq_cardiaca && (sensorSelecionado === 'todos' || sensorSelecionado === 'freq_cardiaca')) {
-    Object.entries(dadosHistorico.freq_cardiaca).forEach(([timestamp, valor]) => {
-      addRegistro(timestamp, 'freq_cardiaca', valor);
+    // Para cada data (ex: "1969-12-31_21-00-03")
+    Object.entries(dadosHistorico.freq_cardiaca).forEach(([data, registrosDaData]) => {
+      // Para cada registro dentro da data
+      Object.entries(registrosDaData).forEach(([id, valor]) => {
+        todosRegistros.push({
+          data: data,
+          id: id,
+          tipo: 'freq_cardiaca',
+          valor: valor,
+          hora: extrairHoraDoId(id) // Tenta extrair hora do ID
+        });
+      });
     });
   }
   
+  // ========== OXIMETRIA ==========
   if (dadosHistorico.oximetria && (sensorSelecionado === 'todos' || sensorSelecionado === 'oximetria')) {
-    Object.entries(dadosHistorico.oximetria).forEach(([timestamp, valor]) => {
-      addRegistro(timestamp, 'oximetria', valor);
+    Object.entries(dadosHistorico.oximetria).forEach(([data, registrosDaData]) => {
+      Object.entries(registrosDaData).forEach(([id, valor]) => {
+        todosRegistros.push({
+          data: data,
+          id: id,
+          tipo: 'oximetria',
+          valor: valor,
+          hora: extrairHoraDoId(id)
+        });
+      });
     });
   }
   
+  // ========== TEMPERATURA ==========
   if (dadosHistorico.temperatura && (sensorSelecionado === 'todos' || sensorSelecionado === 'temperatura')) {
-    Object.entries(dadosHistorico.temperatura).forEach(([timestamp, valor]) => {
-      addRegistro(timestamp, 'temperatura', valor);
+    Object.entries(dadosHistorico.temperatura).forEach(([data, registrosDaData]) => {
+      Object.entries(registrosDaData).forEach(([id, valor]) => {
+        todosRegistros.push({
+          data: data,
+          id: id,
+          tipo: 'temperatura',
+          valor: valor,
+          hora: extrairHoraDoId(id)
+        });
+      });
     });
   }
   
-  // Ordena por timestamp (mais recente primeiro)
+  console.log(`📊 Total de registros encontrados: ${todosRegistros.length}`);
+  
+  // Ordena: primeiro por data, depois por hora estimada
   todosRegistros.sort((a, b) => {
-    // Para formato "1969-12-31_21-00-03"
-    if (a.timestamp.includes('-') && b.timestamp.includes('-')) {
-      return b.timestamp.localeCompare(a.timestamp);
-    }
-    // Para timestamps/IDs
-    return b.timestamp.localeCompare(a.timestamp);
+    // Ordena por data (mais recente primeiro)
+    const dataCompare = b.data.localeCompare(a.data);
+    if (dataCompare !== 0) return dataCompare;
+    
+    // Se mesma data, ordena por hora estimada
+    return (b.hora || '').localeCompare(a.hora || '');
   });
   
   // Atualiza tabela
+  atualizarTabela(todosRegistros);
+}
+
+// 5. ATUALIZA TABELA COM OS REGISTROS PROCESSADOS
+function atualizarTabela(registros) {
   tabelaCorpo.innerHTML = '';
   
-  if (todosRegistros.length === 0) {
+  if (registros.length === 0) {
     tabelaCorpo.innerHTML = `
       <tr>
         <td colspan="4" style="text-align: center; padding: 40px;">
@@ -179,13 +201,19 @@ function atualizarTabelaHistorico() {
     return;
   }
   
-  // Limita a 50 registros para performance
-  const registrosExibir = todosRegistros.slice(0, 50);
+  // Limita a 100 registros
+  const registrosExibir = registros.slice(0, 100);
   
   registrosExibir.forEach(registro => {
     const tr = document.createElement('tr');
     
-    // Preenche os dados de acordo com o tipo
+    // Formata data: "1969-12-31_21-00-03" → "31/12/1969 21:00:03"
+    const dataFormatada = formatarDataString(registro.data);
+    
+    // Formata hora se disponível
+    const horaFormatada = registro.hora ? ` ${registro.hora}` : '';
+    
+    // Preenche os valores
     let freq = '--';
     let oxi = '--';
     let temp = '--';
@@ -199,7 +227,7 @@ function atualizarTabelaHistorico() {
     }
     
     tr.innerHTML = `
-      <td class="data-hora">${registro.dataFormatada}</td>
+      <td class="data-hora">${dataFormatada}${horaFormatada}</td>
       <td>${freq}</td>
       <td>${oxi}</td>
       <td>${temp}</td>
@@ -207,37 +235,46 @@ function atualizarTabelaHistorico() {
     
     tabelaCorpo.appendChild(tr);
   });
+  
+  console.log(`✅ ${registrosExibir.length} registros exibidos na tabela`);
 }
 
-// 5. FORMATA TIMESTAMP
-function formatarTimestamp(timestamp) {
-  // Se for formato "1969-12-31_21-00-03"
-  if (timestamp.includes('-') && timestamp.includes('_')) {
-    const [dataParte, horaParte] = timestamp.split('_');
-    const [ano, mes, dia] = dataParte.split('-');
-    const [hora, minuto, segundo] = horaParte.split('-');
+// 6. FUNÇÕES AUXILIARES
+function formatarDataString(dataString) {
+  // "1969-12-31_21-00-03" → "31/12/1969 21:00:03"
+  if (dataString.includes('_')) {
+    const [dataPart, horaPart] = dataString.split('_');
+    const [ano, mes, dia] = dataPart.split('-');
+    const [hora, minuto, segundo] = horaPart.split('-');
     return `${dia}/${mes}/${ano} ${hora}:${minuto}:${segundo}`;
   }
-  
-  // Se for um ID do Firebase (ex: "-OhjiuV7YZ3hKGrbTh1y")
-  return `Registro ${timestamp.substring(0, 8)}...`;
+  return dataString;
 }
 
-// 6. EVENT LISTENERS
+function extrairHoraDoId(id) {
+  // Tenta extrair algo útil do ID do Firebase
+  // IDs como "-OhjiuV7YZ3hKGrbIh1y" não têm hora, mas podemos mostrar parte do ID
+  if (id && id.length > 8) {
+    return `ID: ${id.substring(1, 8)}...`;
+  }
+  return '';
+}
+
+// 7. EVENT LISTENERS
 btnAtualizar.addEventListener('click', () => {
-  console.log("🔄 Atualizando dados...");
-  if (pacienteNome) {
-    carregarHistorico();
+  console.log("🔄 Atualizando histórico...");
+  if (dadosHistorico) {
+    processarHistorico();
   }
 });
 
 selectSensor.addEventListener('change', () => {
   if (dadosHistorico) {
-    atualizarTabelaHistorico();
+    processarHistorico();
   }
 });
 
-// 7. INICIA TUDO
+// 8. INICIA TUDO
 console.log("🚀 Iniciando monitoramento...");
 iniciarMonitoramento();
 
@@ -246,5 +283,6 @@ setInterval(() => {
   if (pacienteNome) {
     console.log("⏰ Atualização automática...");
     carregarTempoReal();
+    carregarHistorico();
   }
 }, 30000);
