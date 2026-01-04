@@ -4,13 +4,13 @@ import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.
 
 // Config Firebase (USA SUA CONFIG REAL!)
 const firebaseConfig = {
-  apiKey: "AIzaSyB...", // SUA API KEY
-  authDomain: "seu-projeto.firebaseapp.com",
-  databaseURL: "https://seu-projeto-default-rtdb.firebaseio.com/",
-  projectId: "seu-projeto",
-  storageBucket: "seu-projeto.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abc123def456"
+  apiKey: "AIzaSyDURF1Z7S-O0y1mfc0Sf8sjY9KGLJwkYHY",
+  authDomain: "projeto-integradora-ii.firebaseapp.com",
+  databaseURL: "https://projeto-integradora-ii-default-rtdb.firebaseio.com",
+  projectId: "projeto-integradora-ii",
+  storageBucket: "projeto-integradora-ii.firebasestorage.app",
+  messagingSenderId: "80939508930",
+  appId: "1:80939508930:web:9a2d2f9bf97be9eb98075b"
 };
 
 // Inicializa Firebase
