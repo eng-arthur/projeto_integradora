@@ -1,8 +1,5 @@
-// Import Firebase
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+// COLE SUA CONFIGURAÇÃO DO FIREBASE AQUI:
 
-// Config Firebase (USA SUA CONFIG REAL!)
 const firebaseConfig = {
   apiKey: "AIzaSyDURF1Z7S-O0y1mfc0Sf8sjY9KGLJwkYHY",
   authDomain: "projeto-integradora-ii.firebaseapp.com",
@@ -13,226 +10,216 @@ const firebaseConfig = {
   appId: "1:80939508930:web:9a2d2f9bf97be9eb98075b"
 };
 
+// ========== NÃO MEXER DAQUI PARA BAIXO ==========
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
 // Inicializa Firebase
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
-// Referências aos elementos
+// Elementos da página
 const freqElement = document.getElementById('freq');
 const oxiElement = document.getElementById('oxi');
 const tempElement = document.getElementById('temp');
 const tabelaCorpo = document.getElementById('tabelaCorpo');
+const btnAtualizar = document.getElementById('btnAtualizar');
+const selectSensor = document.getElementById('selectSensor');
 
 // Variáveis
 let pacienteId = null;
+let dadosPaciente = null;
 
-// 1. Primeiro, vamos detectar qual paciente está no seu banco
-function detectarPaciente() {
+// Função principal que carrega tudo
+function carregarTudo() {
   const rootRef = ref(database);
   
   onValue(rootRef, (snapshot) => {
-    snapshot.forEach((childSnapshot) => {
-      const key = childSnapshot.key;
-      const data = childSnapshot.val();
-      
-      // Verifica se tem a estrutura de sensores
-      if (data && data.sensores_atuais) {
-        pacienteId = key;
-        console.log("Paciente encontrado:", pacienteId);
-        
-        // Monitora dados em tempo real
-        monitorarTempoReal();
-        
-        // Carrega histórico
-        carregarHistorico();
-        
-        // Atualiza título se quiser
-        document.querySelector('h1').textContent = `Monitoramento - ${pacienteId}`;
-        document.querySelector('.historico-container h1').textContent = `📊 Histórico - ${pacienteId}`;
-      }
-    });
-  });
-}
-
-// 2. Monitora dados em tempo real
-function monitorarTempoReal() {
-  if (!pacienteId) return;
-  
-  const sensoresRef = ref(database, `${pacienteId}/sensores_atuais`);
-  
-  onValue(sensoresRef, (snapshot) => {
-    const data = snapshot.val();
+    const dados = snapshot.val();
+    console.log("📦 Dados brutos do Firebase:", dados);
     
-    if (data) {
-      console.log("Dados em tempo real:", data);
-      
-      // Frequência cardíaca
-      if (data.freq_cardiaca !== undefined) {
-        freqElement.textContent = `${data.freq_cardiaca} bpm`;
-        freqElement.style.color = data.freq_cardiaca > 100 || data.freq_cardiaca < 60 ? '#ef4444' : '#38bdf8';
+    // Encontra o primeiro paciente na estrutura
+    if (dados) {
+      for (const key in dados) {
+        if (dados[key] && dados[key].sensores_atuais) {
+          pacienteId = key;
+          dadosPaciente = dados[key];
+          console.log("✅ Paciente encontrado:", pacienteId);
+          console.log("📊 Dados do paciente:", dadosPaciente);
+          break;
+        }
       }
-      
-      // Oximetria
-      if (data.oximetria !== undefined) {
-        oxiElement.textContent = `${data.oximetria} %`;
-        oxiElement.style.color = data.oximetria < 95 ? '#ef4444' : '#38bdf8';
-      }
-      
-      // Temperatura
-      if (data.temperatura !== undefined) {
-        tempElement.textContent = `${data.temperatura} °C`;
-        tempElement.style.color = data.temperatura > 37.5 ? '#ef4444' : '#38bdf8';
-      }
+    }
+    
+    if (pacienteId && dadosPaciente) {
+      atualizarTempoReal();
+      atualizarHistorico();
+    } else {
+      console.error("❌ Nenhum paciente encontrado no banco!");
+      tabelaCorpo.innerHTML = `
+        <tr>
+          <td colspan="4" style="text-align: center; padding: 40px; color: #ef4444;">
+            ❌ Nenhum paciente encontrado no banco de dados
+          </td>
+        </tr>
+      `;
     }
   });
 }
 
-// 3. Carrega histórico
-function carregarHistorico() {
-  if (!pacienteId) return;
+// Atualiza os dados em tempo real
+function atualizarTempoReal() {
+  const atual = dadosPaciente.sensores_atuais;
   
-  const historicoRef = ref(database, `${pacienteId}/sensores_historico`);
+  if (atual.freq_cardiaca !== undefined) {
+    freqElement.textContent = `${atual.freq_cardiaca} bpm`;
+    freqElement.style.color = atual.freq_cardiaca > 100 || atual.freq_cardiaca < 60 ? '#ef4444' : '#38bdf8';
+  }
   
-  onValue(historicoRef, (snapshot) => {
-    tabelaCorpo.innerHTML = '';
-    
-    if (!snapshot.exists()) {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
+  if (atual.oximetria !== undefined) {
+    oxiElement.textContent = `${atual.oximetria} %`;
+    oxiElement.style.color = atual.oximetria < 95 ? '#ef4444' : '#38bdf8';
+  }
+  
+  if (atual.temperatura !== undefined) {
+    tempElement.textContent = `${atual.temperatura} °C`;
+    tempElement.style.color = atual.temperatura > 37.5 ? '#ef4444' : '#38bdf8';
+  }
+}
+
+// Atualiza o histórico
+function atualizarHistorico() {
+  const historico = dadosPaciente.sensores_historico;
+  const sensorSelecionado = selectSensor.value;
+  
+  if (!historico) {
+    tabelaCorpo.innerHTML = `
+      <tr>
         <td colspan="4" style="text-align: center; padding: 40px;">
-          Nenhum dado histórico encontrado
+          📭 Nenhum histórico disponível
         </td>
-      `;
-      tabelaCorpo.appendChild(tr);
-      return;
-    }
-    
-    const dados = [];
-    const dataAtual = snapshot.val();
-    
-    console.log("Dados históricos brutos:", dataAtual);
-    
-    // Processa histórico da frequência cardíaca
-    if (dataAtual.freq_cardiaca) {
-      Object.entries(dataAtual.freq_cardiaca).forEach(([timestamp, valor]) => {
-        dados.push({
-          timestamp: timestamp,
-          dataFormatada: formatarTimestamp(timestamp),
-          freq_cardiaca: valor,
-          oximetria: '--',
-          temperatura: '--'
-        });
+      </tr>
+    `;
+    return;
+  }
+  
+  let todosDados = [];
+  
+  // Processa frequência cardíaca
+  if (historico.freq_cardiaca && (sensorSelecionado === 'todos' || sensorSelecionado === 'freq_cardiaca')) {
+    Object.entries(historico.freq_cardiaca).forEach(([timestamp, valor]) => {
+      todosDados.push({
+        timestamp,
+        dataFormatada: formatarData(timestamp),
+        freq_cardiaca: valor + ' bpm',
+        oximetria: '--',
+        temperatura: '--'
       });
-    }
-    
-    // Processa histórico da oximetria
-    if (dataAtual.oximetria) {
-      Object.entries(dataAtual.oximetria).forEach(([timestamp, valor]) => {
-        dados.push({
-          timestamp: timestamp,
-          dataFormatada: formatarTimestamp(timestamp),
-          freq_cardiaca: '--',
-          oximetria: valor,
-          temperatura: '--'
-        });
-      });
-    }
-    
-    // Processa histórico da temperatura
-    if (dataAtual.temperatura) {
-      Object.entries(dataAtual.temperatura).forEach(([timestamp, valor]) => {
-        dados.push({
-          timestamp: timestamp,
-          dataFormatada: formatarTimestamp(timestamp),
-          freq_cardiaca: '--',
-          oximetria: '--',
-          temperatura: valor
-        });
-      });
-    }
-    
-    // Ordena por timestamp (mais recente primeiro)
-    dados.sort((a, b) => {
-      // Se for formato "1969-12-31_21-00-03"
-      if (a.timestamp.includes('-') && b.timestamp.includes('-')) {
-        return b.timestamp.localeCompare(a.timestamp);
-      }
-      // Se for timestamp numérico
-      return parseInt(b.timestamp) - parseInt(a.timestamp);
     });
-    
-    // Limita a 50 registros
-    const dadosExibidos = dados.slice(0, 50);
-    
-    // Exibe na tabela
-    dadosExibidos.forEach(registro => {
-      const tr = document.createElement('tr');
-      
-      tr.innerHTML = `
-        <td class="data-hora">${registro.dataFormatada}</td>
-        <td>${registro.freq_cardiaca !== '--' ? registro.freq_cardiaca + ' bpm' : '--'}</td>
-        <td>${registro.oximetria !== '--' ? registro.oximetria + ' %' : '--'}</td>
-        <td>${registro.temperatura !== '--' ? registro.temperatura + ' °C' : '--'}</td>
-      `;
-      
-      tabelaCorpo.appendChild(tr);
+  }
+  
+  // Processa oximetria
+  if (historico.oximetria && (sensorSelecionado === 'todos' || sensorSelecionado === 'oximetria')) {
+    Object.entries(historico.oximetria).forEach(([timestamp, valor]) => {
+      todosDados.push({
+        timestamp,
+        dataFormatada: formatarData(timestamp),
+        freq_cardiaca: '--',
+        oximetria: valor + ' %',
+        temperatura: '--'
+      });
     });
-    
-    // Se não tiver dados
-    if (dadosExibidos.length === 0) {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
+  }
+  
+  // Processa temperatura
+  if (historico.temperatura && (sensorSelecionado === 'todos' || sensorSelecionado === 'temperatura')) {
+    Object.entries(historico.temperatura).forEach(([timestamp, valor]) => {
+      todosDados.push({
+        timestamp,
+        dataFormatada: formatarData(timestamp),
+        freq_cardiaca: '--',
+        oximetria: '--',
+        temperatura: valor + ' °C'
+      });
+    });
+  }
+  
+  // Ordena por timestamp (mais recente primeiro)
+  todosDados.sort((a, b) => {
+    if (a.timestamp.includes('-') && b.timestamp.includes('-')) {
+      return b.timestamp.localeCompare(a.timestamp);
+    }
+    return b.timestamp.localeCompare(a.timestamp);
+  });
+  
+  // Limita a 100 registros
+  const dadosExibidos = todosDados.slice(0, 100);
+  
+  // Atualiza a tabela
+  tabelaCorpo.innerHTML = '';
+  
+  if (dadosExibidos.length === 0) {
+    tabelaCorpo.innerHTML = `
+      <tr>
         <td colspan="4" style="text-align: center; padding: 40px;">
-          Nenhum dado histórico encontrado
+          📭 Nenhum dado para o filtro selecionado
         </td>
-      `;
-      tabelaCorpo.appendChild(tr);
-    }
+      </tr>
+    `;
+    return;
+  }
+  
+  dadosExibidos.forEach(registro => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="data-hora">${registro.dataFormatada}</td>
+      <td>${registro.freq_cardiaca}</td>
+      <td>${registro.oximetria}</td>
+      <td>${registro.temperatura}</td>
+    `;
+    tabelaCorpo.appendChild(tr);
   });
 }
 
-// 4. Função para formatar timestamp
-function formatarTimestamp(timestamp) {
+// Formata a data
+function formatarData(timestamp) {
   // Se for formato "1969-12-31_21-00-03"
   if (timestamp.includes('-') && timestamp.includes('_')) {
-    const [datePart, timePart] = timestamp.split('_');
-    const [year, month, day] = datePart.split('-');
-    const [hour, minute, second] = timePart.split('-');
-    
-    return `${day}/${month}/${year} ${hour}:${minute}:${second}`;
+    const [dataParte, horaParte] = timestamp.split('_');
+    const [ano, mes, dia] = dataParte.split('-');
+    const [hora, minuto, segundo] = horaParte.split('-');
+    return `${dia}/${mes}/${ano} ${hora}:${minuto}:${segundo}`;
   }
   
-  // Se for timestamp numérico (como "-OhjiuV7YZ3hKGrbTh1y" - parece ser push ID do Firebase)
-  // Para push IDs, vamos usar como string
-  return timestamp;
+  // Se for um ID do Firebase (ex: "-OhjiuV7YZ3hKGrbTh1y")
+  return `Registro: ${timestamp.substring(0, 10)}...`;
 }
 
-// 5. Event Listeners para filtros (versão simplificada)
-document.getElementById('btnAtualizar')?.addEventListener('click', () => {
-  if (pacienteId) {
-    carregarHistorico();
+// Event Listeners
+btnAtualizar.addEventListener('click', () => {
+  console.log("🔄 Atualizando dados...");
+  carregarTudo();
+});
+
+selectSensor.addEventListener('change', () => {
+  if (pacienteId && dadosPaciente) {
+    atualizarHistorico();
   }
 });
 
-document.getElementById('selectSensor')?.addEventListener('change', () => {
-  // Implementar filtro por sensor se quiser
+// Carrega tudo quando a página abre
+console.log("🚀 Iniciando aplicação...");
+carregarTudo();
+
+// Atualiza a cada 10 segundos
+setInterval(() => {
   if (pacienteId) {
-    carregarHistorico();
+    const rootRef = ref(database, pacienteId);
+    onValue(rootRef, (snapshot) => {
+      dadosPaciente = snapshot.val();
+      if (dadosPaciente) {
+        atualizarTempoReal();
+      }
+    });
   }
-});
-
-// 6. Inicialização
-detectarPaciente();
-
-// 7. Função para debug - mostra toda a estrutura do banco
-function debugDatabase() {
-  const rootRef = ref(database);
-  
-  onValue(rootRef, (snapshot) => {
-    console.log("ESTRUTURA COMPLETA DO BANCO:");
-    console.log(JSON.stringify(snapshot.val(), null, 2));
-  });
-}
-
-// Descomente a linha abaixo para ver a estrutura completa
- debugDatabase();
+}, 10000);
