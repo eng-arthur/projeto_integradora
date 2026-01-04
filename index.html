@@ -334,13 +334,6 @@
       <h1><i class="fas fa-history"></i> Histórico de Sensores</h1>
       
       <div class="controles">
-        <select id="selectSensor">
-          <option value="todos">📊 Todos os sensores</option>
-          <option value="freq_cardiaca">❤️ Frequência Cardíaca</option>
-          <option value="oximetria">🩸 Oximetria</option>
-          <option value="temperatura">🌡️ Temperatura</option>
-        </select>
-        
         <select id="selectOrdenar">
           <option value="recente">⬇️ Mais recente primeiro</option>
           <option value="antigo">⬆️ Mais antigo primeiro</option>
@@ -348,10 +341,6 @@
         
         <button id="btnAtualizar">
           <i class="fas fa-sync-alt"></i> Atualizar
-        </button>
-        
-        <button id="btnExportar">
-          <i class="fas fa-download"></i> Exportar
         </button>
       </div>
       
@@ -411,8 +400,6 @@
         sexoPaciente: document.getElementById('sexoPaciente'),
         tabelaCorpo: document.getElementById('tabelaCorpo'),
         btnAtualizar: document.getElementById('btnAtualizar'),
-        btnExportar: document.getElementById('btnExportar'),
-        selectSensor: document.getElementById('selectSensor'),
         selectOrdenar: document.getElementById('selectOrdenar'),
         status: document.getElementById('status'),
         ultimaAtualizacao: document.getElementById('ultimaAtualizacao'),
@@ -493,67 +480,96 @@
         }
       }
 
-      // Atualizar tabela de histórico
+      // Atualizar tabela de histórico - AGRUPADO POR DATA/HORA
       function atualizarTabelaHistorico() {
         if (!dadosHistorico) return;
         
-        const sensorFiltro = elementos.selectSensor.value;
+        console.log("🔄 Processando histórico...");
+        
         const ordenacao = elementos.selectOrdenar.value;
-        let registros = [];
         
-        // Processar frequência cardíaca
-        if (dadosHistorico.freq_cardiaca && (sensorFiltro === 'todos' || sensorFiltro === 'freq_cardiaca')) {
-          processarSensor('freq_cardiaca', 'bpm', dadosHistorico.freq_cardiaca, registros);
-        }
+        // Objeto para agrupar por data/hora
+        const registrosPorData = {};
         
-        // Processar oximetria
-        if (dadosHistorico.oximetria && (sensorFiltro === 'todos' || sensorFiltro === 'oximetria')) {
-          processarSensor('oximetria', '%', dadosHistorico.oximetria, registros);
-        }
+        // Processar TODOS os sensores e agrupar por data/hora
+        processarEAgruparDados(dadosHistorico, registrosPorData);
         
-        // Processar temperatura
-        if (dadosHistorico.temperatura && (sensorFiltro === 'todos' || sensorFiltro === 'temperatura')) {
-          processarSensor('temperatura', '°C', dadosHistorico.temperatura, registros);
-        }
+        // Converter objeto para array
+        let registrosAgrupados = Object.values(registrosPorData);
+        
+        console.log(`📊 ${registrosAgrupados.length} registros agrupados por data/hora`);
         
         // Ordenar
         if (ordenacao === 'recente') {
-          registros.sort((a, b) => b.dataCompleta.localeCompare(a.dataCompleta));
+          registrosAgrupados.sort((a, b) => b.dataCompleta.localeCompare(a.dataCompleta));
         } else {
-          registros.sort((a, b) => a.dataCompleta.localeCompare(b.dataCompleta));
+          registrosAgrupados.sort((a, b) => a.dataCompleta.localeCompare(b.dataCompleta));
         }
         
         // Atualizar contador
-        elementos.contadorRegistros.textContent = `${registros.length} registros encontrados`;
+        elementos.contadorRegistros.textContent = `${registrosAgrupados.length} registros agrupados`;
         
         // Renderizar tabela
-        renderizarTabela(registros);
+        renderizarTabelaAgrupada(registrosAgrupados);
       }
 
-      // Processar dados de um sensor
-      function processarSensor(tipo, unidade, dados, arrayRegistros) {
-        Object.entries(dados).forEach(([dataString, registrosData]) => {
+      // Processar e agrupar dados por data/hora
+      function processarEAgruparDados(dados, objetoAgrupado) {
+        // Processar frequência cardíaca
+        if (dados.freq_cardiaca) {
+          processarSensorParaAgrupamento('freq_cardiaca', dados.freq_cardiaca, objetoAgrupado);
+        }
+        
+        // Processar oximetria
+        if (dados.oximetria) {
+          processarSensorParaAgrupamento('oximetria', dados.oximetria, objetoAgrupado);
+        }
+        
+        // Processar temperatura
+        if (dados.temperatura) {
+          processarSensorParaAgrupamento('temperatura', dados.temperatura, objetoAgrupado);
+        }
+      }
+
+      // Processar um sensor específico para agrupamento
+      function processarSensorParaAgrupamento(tipo, dadosSensor, objetoAgrupado) {
+        // Para cada data/hora (ex: "1969-12-31_21-00-03")
+        Object.entries(dadosSensor).forEach(([dataHoraString, registrosData]) => {
+          // Para cada registro dentro da data/hora
           Object.entries(registrosData).forEach(([idRegistro, valor]) => {
-            const dataFormatada = formatarData(dataString);
-            const hora = extrairHora(dataString);
             
-            arrayRegistros.push({
-              dataString,
-              dataFormatada: `${dataFormatada} ${hora}`,
-              dataCompleta: dataString,
-              tipo,
-              valor,
-              unidade
-            });
+            // Se ainda não tem registro para esta data/hora, criar
+            if (!objetoAgrupado[dataHoraString]) {
+              const dataFormatada = formatarData(dataHoraString);
+              const hora = extrairHora(dataHoraString);
+              
+              objetoAgrupado[dataHoraString] = {
+                dataHoraString: dataHoraString,
+                dataFormatada: `${dataFormatada} ${hora}`,
+                dataCompleta: dataHoraString,
+                freq_cardiaca: '--',
+                oximetria: '--',
+                temperatura: '--'
+              };
+            }
+            
+            // Adicionar o valor do sensor ao registro agrupado
+            if (tipo === 'freq_cardiaca') {
+              objetoAgrupado[dataHoraString].freq_cardiaca = `${valor} bpm`;
+            } else if (tipo === 'oximetria') {
+              objetoAgrupado[dataHoraString].oximetria = `${valor} %`;
+            } else if (tipo === 'temperatura') {
+              objetoAgrupado[dataHoraString].temperatura = `${valor} °C`;
+            }
           });
         });
       }
 
-      // Renderizar tabela
-      function renderizarTabela(registros) {
+      // Renderizar tabela com dados agrupados
+      function renderizarTabelaAgrupada(registrosAgrupados) {
         elementos.tabelaCorpo.innerHTML = '';
         
-        if (registros.length === 0) {
+        if (registrosAgrupados.length === 0) {
           elementos.tabelaCorpo.innerHTML = `
             <tr>
               <td colspan="4" style="text-align: center; padding: 40px;">
@@ -564,28 +580,16 @@
           return;
         }
         
-        registros.forEach(registro => {
+        registrosAgrupados.forEach(registro => {
           const tr = document.createElement('tr');
-          
-          let freq = '--';
-          let oxi = '--';
-          let temp = '--';
-          
-          if (registro.tipo === 'freq_cardiaca') {
-            freq = `${registro.valor} ${registro.unidade}`;
-          } else if (registro.tipo === 'oximetria') {
-            oxi = `${registro.valor} ${registro.unidade}`;
-          } else if (registro.tipo === 'temperatura') {
-            temp = `${registro.valor} ${registro.unidade}`;
-          }
           
           tr.innerHTML = `
             <td class="data-hora">
               <i class="far fa-calendar"></i> ${registro.dataFormatada}
             </td>
-            <td>${freq}</td>
-            <td>${oxi}</td>
-            <td>${temp}</td>
+            <td>${registro.freq_cardiaca}</td>
+            <td>${registro.oximetria}</td>
+            <td>${registro.temperatura}</td>
           `;
           
           elementos.tabelaCorpo.appendChild(tr);
@@ -593,73 +597,22 @@
       }
 
       // Funções auxiliares
-      function formatarData(dataString) {
-        if (!dataString.includes('_')) return dataString;
+      function formatarData(dataHoraString) {
+        if (!dataHoraString.includes('_')) return dataHoraString;
         
-        const [dataPart, horaPart] = dataString.split('_');
+        const [dataPart, _] = dataHoraString.split('_');
         const [ano, mes, dia] = dataPart.split('-');
-        const [hora, minuto, segundo] = horaPart.split('-');
         
         return `${dia}/${mes}/${ano}`;
       }
 
-      function extrairHora(dataString) {
-        if (!dataString.includes('_')) return '';
+      function extrairHora(dataHoraString) {
+        if (!dataHoraString.includes('_')) return '';
         
-        const [_, horaPart] = dataString.split('_');
+        const [_, horaPart] = dataHoraString.split('_');
         const [hora, minuto, segundo] = horaPart.split('-');
         
         return `${hora}:${minuto}:${segundo}`;
-      }
-
-      // Exportar para CSV
-      function exportarParaCSV() {
-        if (!dadosHistorico) return;
-        
-        let csv = "Data;Hora;Frequência Cardíaca (bpm);Oximetria (%);Temperatura (°C)\n";
-        
-        // Processar todos os dados
-        const processarParaCSV = (tipo, dados) => {
-          Object.entries(dados).forEach(([dataString, registrosData]) => {
-            Object.entries(registrosData).forEach(([idRegistro, valor]) => {
-              const [dataPart, horaPart] = dataString.split('_');
-              const [ano, mes, dia] = dataPart.split('-');
-              const [hora, minuto, segundo] = horaPart.split('-');
-              
-              const dataFormatada = `${dia}/${mes}/${ano}`;
-              const horaFormatada = `${hora}:${minuto}:${segundo}`;
-              
-              let linha = `${dataFormatada};${horaFormatada}`;
-              
-              if (tipo === 'freq_cardiaca') {
-                linha += `;${valor};;`;
-              } else if (tipo === 'oximetria') {
-                linha += `;;${valor};`;
-              } else if (tipo === 'temperatura') {
-                linha += `;;;${valor}`;
-              }
-              
-              csv += linha + "\n";
-            });
-          });
-        };
-        
-        if (dadosHistorico.freq_cardiaca) processarParaCSV('freq_cardiaca', dadosHistorico.freq_cardiaca);
-        if (dadosHistorico.oximetria) processarParaCSV('oximetria', dadosHistorico.oximetria);
-        if (dadosHistorico.temperatura) processarParaCSV('temperatura', dadosHistorico.temperatura);
-        
-        // Criar arquivo e fazer download
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        
-        link.setAttribute("href", url);
-        link.setAttribute("download", `historico_paciente_${new Date().toISOString().split('T')[0]}.csv`);
-        link.style.visibility = 'hidden';
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
       }
 
       // Event Listeners
@@ -681,8 +634,6 @@
         }, { onlyOnce: true });
       });
 
-      elementos.btnExportar.addEventListener('click', exportarParaCSV);
-      elementos.selectSensor.addEventListener('change', () => dadosHistorico && atualizarTabelaHistorico());
       elementos.selectOrdenar.addEventListener('change', () => dadosHistorico && atualizarTabelaHistorico());
 
       // Atualização automática
