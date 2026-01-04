@@ -24,7 +24,6 @@
       width: 320px;
       box-shadow: 0 0 20px rgba(0,0,0,0.5);
       flex-shrink: 0;
-      height: fit-content;
     }
     .historico-container {
       flex: 1;
@@ -32,7 +31,6 @@
       padding: 30px;
       border-radius: 12px;
       box-shadow: 0 0 20px rgba(0,0,0,0.5);
-      min-height: 500px;
     }
     h1 {
       text-align: center;
@@ -47,27 +45,6 @@
     .valor {
       font-weight: bold;
       color: #38bdf8;
-    }
-    .controles {
-      margin: 20px 0;
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    select, button {
-      padding: 10px 15px;
-      background: #1e293b;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-      cursor: pointer;
-    }
-    button {
-      background: #38bdf8;
-    }
-    button:hover {
-      background: #0ea5e9;
     }
     table {
       width: 100%;
@@ -89,20 +66,6 @@
       color: #94a3b8;
       font-size: 14px;
     }
-    .status {
-      padding: 5px 10px;
-      border-radius: 4px;
-      font-size: 12px;
-      margin-left: 10px;
-    }
-    .online {
-      background: #10b981;
-      color: white;
-    }
-    .offline {
-      background: #ef4444;
-      color: white;
-    }
     @media (max-width: 900px) {
       .container { flex-direction: column; }
       .card { width: 100%; }
@@ -111,9 +74,8 @@
 </head>
 <body>
   <div class="container">
-    <!-- Card dos sensores em tempo real -->
     <div class="card">
-      <h1>📍 Monitoramento em Tempo Real</h1>
+      <h1>📍 Sensores em Tempo Real</h1>
       <div class="sensor">
         <span>❤️ Frequência Cardíaca</span>
         <span class="valor" id="freq">-- bpm</span>
@@ -126,53 +88,38 @@
         <span>🌡️ Temperatura</span>
         <span class="valor" id="temp">-- °C</span>
       </div>
-      <div style="margin-top: 20px; text-align: center;">
-        <span class="status online" id="status">ONLINE</span>
-      </div>
     </div>
 
-    <!-- Seção de histórico -->
     <div class="historico-container">
       <h1>📊 Histórico do Paciente</h1>
-      <div class="controles">
-        <select id="selectSensor">
-          <option value="todos">Todos os sensores</option>
-          <option value="freq_cardiaca">Frequência Cardíaca</option>
-          <option value="oximetria">Oximetria</option>
-          <option value="temperatura">Temperatura</option>
-        </select>
-        <button id="btnAtualizar">↻ Atualizar Histórico</button>
-      </div>
-      
-      <div id="historicoTabela">
-        <table>
-          <thead>
-            <tr>
-              <th>Data/Hora</th>
-              <th>Frequência Cardíaca</th>
-              <th>Oximetria</th>
-              <th>Temperatura</th>
-            </tr>
-          </thead>
-          <tbody id="tabelaCorpo">
-            <tr>
-              <td colspan="4" style="text-align: center; padding: 40px;">
-                Conectando ao banco de dados...
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Data/Hora</th>
+            <th>Frequência Cardíaca</th>
+            <th>Oximetria</th>
+            <th>Temperatura</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaCorpo">
+          <tr>
+            <td colspan="4" style="text-align: center; padding: 40px;">
+              Aguardando dados...
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
-  <!-- SCRIPT JS DIRETO NO HTML (EVITA PROBLEMAS DE CARREGAMENTO) -->
   <script type="module">
-    // Importa o Firebase
+    console.log("=== INICIANDO SCRIPT ===");
+    
+    // PASSO 1: Importar Firebase
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    // CONFIGURAÇÃO DO FIREBASE - SUAS CREDENCIAIS
+    // PASSO 2: Configuração do Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyDURF1Z7S-O0y1mfc0Sf8sjY9KGLJwkYHY",
       authDomain: "projeto-integradora-ii.firebaseapp.com",
@@ -183,284 +130,226 @@
       appId: "1:80939508930:web:9a2d2f9bf97be9eb98075b"
     };
 
-    console.log("🚀 Iniciando conexão com Firebase...");
+    console.log("📡 Conectando ao Firebase...");
 
     try {
-      // Inicializa Firebase
+      // PASSO 3: Inicializar Firebase
       const app = initializeApp(firebaseConfig);
-      const db = getDatabase(app);
+      const database = getDatabase(app);
       console.log("✅ Firebase conectado!");
 
-      // Elementos da página
+      // PASSO 4: Pegar elementos da página
       const freqElement = document.getElementById('freq');
       const oxiElement = document.getElementById('oxi');
       const tempElement = document.getElementById('temp');
-      const statusElement = document.getElementById('status');
       const tabelaCorpo = document.getElementById('tabelaCorpo');
-      const btnAtualizar = document.getElementById('btnAtualizar');
-      const selectSensor = document.getElementById('selectSensor');
 
-      // Variáveis
-      let pacienteNome = null;
-      let dadosHistorico = null;
-      let ultimaAtualizacao = new Date();
-
-      // 1. BUSCAR DADOS DO FIREBASE
-      function buscarDadosFirebase() {
-        console.log("📡 Buscando dados do Firebase...");
+      // PASSO 5: Conectar à raiz do banco
+      const rootRef = ref(database);
+      
+      console.log("🔍 Ouvindo por dados na raiz...");
+      
+      onValue(rootRef, (snapshot) => {
+        const todosDados = snapshot.val();
+        console.log("📦 DADOS RECEBIDOS:", todosDados);
         
-        const rootRef = ref(db);
-        
-        onValue(rootRef, (snapshot) => {
-          const dadosCompletos = snapshot.val();
-          console.log("📦 Dados recebidos:", dadosCompletos);
-          
-          if (!dadosCompletos) {
-            console.error("❌ Banco de dados vazio!");
-            mostrarErro("Banco de dados vazio");
-            return;
-          }
-          
-          // Encontrar o nome do paciente (primeira chave)
-          const chaves = Object.keys(dadosCompletos);
-          pacienteNome = chaves[0];
-          console.log("✅ Paciente encontrado:", pacienteNome);
-          
-          // Atualizar tempo real
-          atualizarTempoReal(dadosCompletos[pacienteNome]);
-          
-          // Atualizar histórico
-          atualizarHistorico(dadosCompletos[pacienteNome]);
-          
-          // Atualizar status
-          ultimaAtualizacao = new Date();
-          statusElement.textContent = `ONLINE - ${ultimaAtualizacao.toLocaleTimeString('pt-BR')}`;
-          statusElement.className = "status online";
-          
-        }, (error) => {
-          console.error("❌ Erro ao conectar:", error);
-          mostrarErro("Erro de conexão");
-          statusElement.textContent = "OFFLINE";
-          statusElement.className = "status offline";
-        });
-      }
-
-      // 2. ATUALIZAR DADOS EM TEMPO REAL
-      function atualizarTempoReal(dadosPaciente) {
-        if (!dadosPaciente || !dadosPaciente.sensores_atuais) {
-          console.warn("⚠️ Dados em tempo real não disponíveis");
-          return;
-        }
-        
-        const sensores = dadosPaciente.sensores_atuais;
-        console.log("🔄 Dados tempo real:", sensores);
-        
-        // Frequência cardíaca
-        if (sensores.freq_cardiaca !== undefined) {
-          freqElement.textContent = `${sensores.freq_cardiaca} bpm`;
-          freqElement.style.color = sensores.freq_cardiaca > 100 || sensores.freq_cardiaca < 60 ? '#ef4444' : '#38bdf8';
-        }
-        
-        // Oximetria
-        if (sensores.oximetria !== undefined) {
-          oxiElement.textContent = `${sensores.oximetria} %`;
-          oxiElement.style.color = sensores.oximetria < 95 ? '#ef4444' : '#38bdf8';
-        }
-        
-        // Temperatura
-        if (sensores.temperatura !== undefined) {
-          tempElement.textContent = `${sensores.temperatura} °C`;
-          tempElement.style.color = sensores.temperatura > 37.5 ? '#ef4444' : '#38bdf8';
-        }
-      }
-
-      // 3. ATUALIZAR HISTÓRICO
-      function atualizarHistorico(dadosPaciente) {
-        if (!dadosPaciente || !dadosPaciente.sensores_historico) {
-          console.warn("⚠️ Histórico não disponível");
+        if (!todosDados) {
+          console.error("❌ Banco de dados VAZIO!");
           tabelaCorpo.innerHTML = `
             <tr>
-              <td colspan="4" style="text-align: center; padding: 40px;">
-                Histórico não disponível
+              <td colspan="4" style="text-align: center; padding: 40px; color: #ef4444;">
+                ❌ Banco de dados vazio!
               </td>
             </tr>
           `;
           return;
         }
         
-        dadosHistorico = dadosPaciente.sensores_historico;
-        console.log("📚 Dados históricos recebidos:", dadosHistorico);
+        // PASSO 6: Encontrar o nome do paciente
+        const nomesPacientes = Object.keys(todosDados);
+        console.log("👤 Pacientes encontrados:", nomesPacientes);
         
-        // Processar histórico
-        processarEExibirHistorico();
-      }
-
-      // 4. PROCESSAR E EXIBIR HISTÓRICO
-      function processarEExibirHistorico() {
-        const sensorSelecionado = selectSensor.value;
-        let todosRegistros = [];
-        
-        // PROCESSAR FREQUÊNCIA CARDÍACA
-        if (dadosHistorico.freq_cardiaca && (sensorSelecionado === 'todos' || sensorSelecionado === 'freq_cardiaca')) {
-          processarSensor('freq_cardiaca', 'bpm', dadosHistorico.freq_cardiaca, todosRegistros);
-        }
-        
-        // PROCESSAR OXIMETRIA
-        if (dadosHistorico.oximetria && (sensorSelecionado === 'todos' || sensorSelecionado === 'oximetria')) {
-          processarSensor('oximetria', '%', dadosHistorico.oximetria, todosRegistros);
-        }
-        
-        // PROCESSAR TEMPERATURA
-        if (dadosHistorico.temperatura && (sensorSelecionado === 'todos' || sensorSelecionado === 'temperatura')) {
-          processarSensor('temperatura', '°C', dadosHistorico.temperatura, todosRegistros);
-        }
-        
-        console.log(`📊 Total de registros: ${todosRegistros.length}`);
-        
-        // Ordenar por data (mais recente primeiro)
-        todosRegistros.sort((a, b) => b.dataCompleta.localeCompare(a.dataCompleta));
-        
-        // Exibir na tabela
-        exibirNaTabela(todosRegistros);
-      }
-
-      // 5. PROCESSAR UM SENSOR ESPECÍFICO
-      function processarSensor(tipo, unidade, dadosSensor, arrayRegistros) {
-        // Para cada data (ex: "1969-12-31_21-00-03")
-        Object.entries(dadosSensor).forEach(([dataString, registrosData]) => {
-          // Para cada registro dentro da data
-          Object.entries(registrosData).forEach(([idRegistro, valor]) => {
-            arrayRegistros.push({
-              dataString: dataString,
-              dataFormatada: formatarData(dataString),
-              dataCompleta: dataString, // Para ordenação
-              tipo: tipo,
-              valor: valor,
-              unidade: unidade,
-              id: idRegistro
-            });
-          });
-        });
-      }
-
-      // 6. EXIBIR DADOS NA TABELA
-      function exibirNaTabela(registros) {
-        tabelaCorpo.innerHTML = '';
-        
-        if (registros.length === 0) {
-          tabelaCorpo.innerHTML = `
-            <tr>
-              <td colspan="4" style="text-align: center; padding: 40px;">
-                Nenhum registro encontrado
-              </td>
-            </tr>
-          `;
+        if (nomesPacientes.length === 0) {
+          console.error("❌ Nenhum paciente encontrado!");
           return;
         }
         
-        // Limitar a 50 registros para performance
-        const registrosExibir = registros.slice(0, 50);
+        const nomePrimeiroPaciente = nomesPacientes[0];
+        console.log("🎯 Usando paciente:", nomePrimeiroPaciente);
         
-        registrosExibir.forEach((registro, index) => {
-          const tr = document.createElement('tr');
+        const dadosPaciente = todosDados[nomePrimeiroPaciente];
+        console.log("📊 Dados do paciente:", dadosPaciente);
+        
+        // PASSO 7: Atualizar dados em tempo real
+        if (dadosPaciente.sensores_atuais) {
+          const sensores = dadosPaciente.sensores_atuais;
+          console.log("🔄 Dados tempo real:", sensores);
           
-          // Determinar quais colunas preencher
-          let freq = '--';
-          let oxi = '--';
-          let temp = '--';
-          
-          if (registro.tipo === 'freq_cardiaca') {
-            freq = `${registro.valor} ${registro.unidade}`;
-          } else if (registro.tipo === 'oximetria') {
-            oxi = `${registro.valor} ${registro.unidade}`;
-          } else if (registro.tipo === 'temperatura') {
-            temp = `${registro.valor} ${registro.unidade}`;
+          // Frequência cardíaca
+          if (sensores.freq_cardiaca !== undefined) {
+            freqElement.textContent = sensores.freq_cardiaca + " bpm";
+            console.log("❤️ Frequência:", sensores.freq_cardiaca);
           }
           
-          tr.innerHTML = `
-            <td class="data-hora">${registro.dataFormatada}</td>
-            <td>${freq}</td>
-            <td>${oxi}</td>
-            <td>${temp}</td>
-          `;
+          // Oximetria
+          if (sensores.oximetria !== undefined) {
+            oxiElement.textContent = sensores.oximetria + " %";
+            console.log("🩸 Oximetria:", sensores.oximetria);
+          }
           
-          tabelaCorpo.appendChild(tr);
-        });
-        
-        // Adicionar contador
-        if (registros.length > 50) {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td colspan="4" style="text-align: center; padding: 10px; color: #94a3b8; font-size: 12px;">
-              Mostrando 50 de ${registros.length} registros
-            </td>
-          `;
-          tabelaCorpo.appendChild(tr);
-        }
-      }
-
-      // 7. FUNÇÕES AUXILIARES
-      function formatarData(dataString) {
-        // Formatar "1969-12-31_21-00-03" para "31/12/1969 21:00:03"
-        if (dataString && dataString.includes('_')) {
-          try {
-            const [dataPart, horaPart] = dataString.split('_');
-            const [ano, mes, dia] = dataPart.split('-');
-            const [hora, minuto, segundo] = horaPart.split('-');
-            return `${dia}/${mes}/${ano} ${hora}:${minuto}:${segundo}`;
-          } catch (e) {
-            return dataString;
+          // Temperatura
+          if (sensores.temperatura !== undefined) {
+            tempElement.textContent = sensores.temperatura + " °C";
+            console.log("🌡️ Temperatura:", sensores.temperatura);
           }
         }
-        return dataString || 'Data desconhecida';
-      }
-
-      function mostrarErro(mensagem) {
+        
+        // PASSO 8: Mostrar histórico
+        if (dadosPaciente.sensores_historico) {
+          console.log("📚 Histórico disponível!");
+          mostrarHistorico(dadosPaciente.sensores_historico);
+        } else {
+          console.warn("⚠️ Nenhum histórico encontrado");
+          tabelaCorpo.innerHTML = `
+            <tr>
+              <td colspan="4" style="text-align: center; padding: 40px;">
+                Nenhum histórico disponível
+              </td>
+            </tr>
+          `;
+        }
+        
+      }, (error) => {
+        console.error("❌ ERRO ao ler dados:", error);
         tabelaCorpo.innerHTML = `
           <tr>
             <td colspan="4" style="text-align: center; padding: 40px; color: #ef4444;">
-              ❌ ${mensagem}
+              ❌ Erro ao conectar: ${error.message}
             </td>
           </tr>
         `;
+      });
+
+      // FUNÇÃO PARA MOSTRAR HISTÓRICO
+      function mostrarHistorico(historico) {
+        console.log("📋 Processando histórico:", historico);
         
-        freqElement.textContent = '-- bpm';
-        oxiElement.textContent = '-- %';
-        tempElement.textContent = '-- °C';
+        // Limpar tabela
+        tabelaCorpo.innerHTML = '';
+        
+        // Verificar se tem dados de frequência cardíaca
+        if (historico.freq_cardiaca) {
+          console.log("❤️ Histórico de frequência:", historico.freq_cardiaca);
+          
+          // Para cada data (ex: "1969-12-31_21-00-03")
+          Object.entries(historico.freq_cardiaca).forEach(([dataString, registrosData]) => {
+            console.log(`📅 Data: ${dataString}`, registrosData);
+            
+            // Para cada registro dentro da data
+            Object.entries(registrosData).forEach(([idRegistro, valor]) => {
+              console.log(`   ID: ${idRegistro}, Valor: ${valor}`);
+              
+              // Formatar a data
+              let dataFormatada = dataString;
+              if (dataString.includes('_')) {
+                const [dataPart, horaPart] = dataString.split('_');
+                const [ano, mes, dia] = dataPart.split('-');
+                const [hora, minuto, segundo] = horaPart.split('-');
+                dataFormatada = `${dia}/${mes}/${ano} ${hora}:${minuto}:${segundo}`;
+              }
+              
+              // Criar linha na tabela
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td class="data-hora">${dataFormatada}</td>
+                <td>${valor} bpm</td>
+                <td>--</td>
+                <td>--</td>
+              `;
+              tabelaCorpo.appendChild(tr);
+            });
+          });
+        }
+        
+        // Verificar oximetria
+        if (historico.oximetria) {
+          console.log("🩸 Histórico de oximetria:", historico.oximetria);
+          
+          Object.entries(historico.oximetria).forEach(([dataString, registrosData]) => {
+            Object.entries(registrosData).forEach(([idRegistro, valor]) => {
+              let dataFormatada = dataString;
+              if (dataString.includes('_')) {
+                const [dataPart, horaPart] = dataString.split('_');
+                const [ano, mes, dia] = dataPart.split('-');
+                const [hora, minuto, segundo] = horaPart.split('-');
+                dataFormatada = `${dia}/${mes}/${ano} ${hora}:${minuto}:${segundo}`;
+              }
+              
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td class="data-hora">${dataFormatada}</td>
+                <td>--</td>
+                <td>${valor} %</td>
+                <td>--</td>
+              `;
+              tabelaCorpo.appendChild(tr);
+            });
+          });
+        }
+        
+        // Verificar temperatura
+        if (historico.temperatura) {
+          console.log("🌡️ Histórico de temperatura:", historico.temperatura);
+          
+          Object.entries(historico.temperatura).forEach(([dataString, registrosData]) => {
+            Object.entries(registrosData).forEach(([idRegistro, valor]) => {
+              let dataFormatada = dataString;
+              if (dataString.includes('_')) {
+                const [dataPart, horaPart] = dataString.split('_');
+                const [ano, mes, dia] = dataPart.split('-');
+                const [hora, minuto, segundo] = horaPart.split('-');
+                dataFormatada = `${dia}/${mes}/${ano} ${hora}:${minuto}:${segundo}`;
+              }
+              
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td class="data-hora">${dataFormatada}</td>
+                <td>--</td>
+                <td>--</td>
+                <td>${valor} °C</td>
+              `;
+              tabelaCorpo.appendChild(tr);
+            });
+          });
+        }
+        
+        // Se não adicionou nenhum registro
+        if (tabelaCorpo.children.length === 0) {
+          console.warn("⚠️ Nenhum registro histórico processado");
+          tabelaCorpo.innerHTML = `
+            <tr>
+              <td colspan="4" style="text-align: center; padding: 40px;">
+                Histórico vazio
+              </td>
+            </tr>
+          `;
+        } else {
+          console.log(`✅ ${tabelaCorpo.children.length} registros exibidos`);
+        }
       }
 
-      // 8. EVENT LISTENERS
-      btnAtualizar.addEventListener('click', () => {
-        console.log("🔄 Atualização manual solicitada");
-        buscarDadosFirebase();
-      });
-
-      selectSensor.addEventListener('change', () => {
-        if (dadosHistorico) {
-          console.log("🔍 Aplicando filtro:", selectSensor.value);
-          processarEExibirHistorico();
-        }
-      });
-
-      // 9. INICIAR TUDO
-      buscarDadosFirebase();
-
-      // Atualizar automaticamente a cada 30 segundos
-      setInterval(() => {
-        console.log("⏰ Atualização automática");
-        buscarDadosFirebase();
-      }, 30000);
-
     } catch (error) {
-      console.error("❌ Erro crítico:", error);
+      console.error("❌ ERRO CRÍTICO:", error);
       document.body.innerHTML = `
-        <div style="text-align: center; padding: 50px; color: #ef4444;">
-          <h1>❌ Erro ao carregar aplicação</h1>
+        <div style="text-align: center; padding: 100px; color: #ef4444;">
+          <h1>ERRO CRÍTICO</h1>
           <p>${error.message}</p>
-          <p>Verifique o console para mais detalhes (F12)</p>
+          <p>Verifique o console (F12) para detalhes</p>
         </div>
       `;
     }
+    
+    console.log("=== FIM DO SCRIPT ===");
   </script>
 </body>
 </html>
