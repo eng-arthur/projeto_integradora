@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Monitoramento em Tempo Real</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #e5e7eb;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+
+    /* Barra superior com informações do usuário */
+    .user-info-bar {
+      background: rgba(30, 41, 59, 0.9);
+      padding: 12px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+      backdrop-filter: blur(10px);
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+    }
+
+    .user-info i {
+      color: #38bdf8;
+    }
+
+    #btnLogout {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    #btnLogout:hover {
+      background: rgba(239, 68, 68, 0.3);
+      transform: translateY(-1px);
+    }
+    
+    .container {
+      display: flex;
+      gap: 30px;
+      max-width: 1400px;
+      margin: 20px auto;
+      padding: 0 20px;
+      height: calc(90vh - 70px);
+    }
+    
+    .card {
+      background: rgba(2, 6, 23, 0.9);
+      padding: 30px;
+      border-radius: 16px;
+      width: 380px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      flex-shrink: 0;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(56, 189, 248, 0.1);
+    }
+    
+    .historico-container {
+      flex: 1;
+      background: rgba(2, 6, 23, 0.9);
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(56, 189, 248, 0.1);
+    }
+    
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #38bdf8;
+      font-size: 1.8rem;
+      position: relative;
+    }
+    
+    h1:after {
+      content: '';
+      display: block;
+      width: 60px;
+      height: 3px;
+      background: #38bdf8;
+      margin: 10px auto;
+      border-radius: 2px;
+    }
+    
+    .info-paciente {
+      background: rgba(30, 41, 59, 0.7);
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+      border-left: 4px solid #38bdf8;
+    }
+    
+    .info-paciente div {
+      margin: 8px 0;
+      font-size: 15px;
+    }
+    
+    .sensor {
+      margin: 20px 0;
+      padding: 18px;
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 12px;
+      font-size: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: transform 0.2s, background 0.2s;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .sensor:hover {
+      transform: translateY(-2px);
+      background: rgba(30, 41, 59, 0.7);
+    }
+    
+    .sensor span:first-child {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .valor {
+      font-weight: bold;
+      font-size: 1.3rem;
+      padding: 8px 16px;
+      background: rgba(56, 189, 248, 0.1);
+      border-radius: 8px;
+      min-width: 100px;
+      text-align: center;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+    
+    .tabela-wrapper {
+      flex: 1;
+      overflow: hidden;
+      border-radius: 12px;
+      border: 1px solid rgba(56, 189, 248, 0.1);
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0;
+    }
+    
+    thead {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    
+    th {
+      background: rgba(30, 41, 59, 0.95);
+      padding: 18px 20px;
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 2px solid #38bdf8;
+      color: #38bdf8;
+    }
+    
+    td {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+    }
+    
+    tbody tr {
+      transition: background 0.2s;
+    }
+    
+    tbody tr:hover {
+      background: rgba(56, 189, 248, 0.1);
+    }
+    
+    .data-hora {
+      color: #94a3b8;
+      font-size: 14px;
+      font-family: 'Consolas', monospace;
+    }
+    
+    .controles {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+    }
+    
+    select, button {
+      padding: 12px 20px;
+      background: rgba(30, 41, 59, 0.8);
+      color: white;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 10px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: all 0.2s;
+      outline: none;
+    }
+    
+    select:hover, button:hover {
+      border-color: #38bdf8;
+      background: rgba(56, 189, 248, 0.1);
+    }
+    
+    select:focus, button:focus {
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+    }
+    
+    button {
+      background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%);
+      border: none;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    button:hover {
+      background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+      transform: translateY(-1px);
+    }
+    
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 25px;
+      padding: 15px;
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 12px;
+      font-size: 14px;
+    }
+    
+    .status {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .status::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    
+    .online {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+    }
+    
+    .online::before {
+      background: #10b981;
+    }
+    
+    .offline {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+    }
+    
+    .offline::before {
+      background: #ef4444;
+    }
+    
+    @media (max-width: 1100px) {
+      .container {
+        flex-direction: column;
+        height: auto;
+      }
+      
+      .card {
+        width: 100%;
+      }
+      
+      .historico-container {
+        min-height: 500px;
+      }
+    }
+    
+    /* Scrollbar personalizada */
+    .tabela-wrapper {
+      overflow-y: auto;
+    }
+    
+    .tabela-wrapper::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    .tabela-wrapper::-webkit-scrollbar-track {
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 4px;
+    }
+    
+    .tabela-wrapper::-webkit-scrollbar-thumb {
+      background: #38bdf8;
+      border-radius: 4px;
+    }
+    
+    .tabela-wrapper::-webkit-scrollbar-thumb:hover {
+      background: #0ea5e9;
+    }
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <!-- Barra superior com informações do usuário -->
+  <div class="user-info-bar">
+    <div class="user-info">
+      <i class="fas fa-user-md"></i>
+      <span id="loggedUserInfo">Carregando informações do usuário...</span>
+    </div>
+    <button id="btnLogout">
+      <i class="fas fa-sign-out-alt"></i> Sair do Sistema
+    </button>
+  </div>
+
+  <div class="container">
+    <!-- Card dos sensores em tempo real -->
+    <div class="card">
+      <h1><i class="fas fa-heart-pulse"></i> Monitoramento em Tempo Real</h1>
+      
+      <div class="info-paciente">
+        <div><strong><i class="fas fa-user"></i> Paciente:</strong> <span id="nomePaciente">--</span></div>
+        <div><strong><i class="fas fa-id-card"></i> ID:</strong> <span id="idPaciente">--</span></div>
+        <div><strong><i class="fas fa-venus-mars"></i> Sexo:</strong> <span id="sexoPaciente">--</span></div>
+      </div>
+      
+      <div class="sensor">
+        <span><i class="fas fa-heart" style="color: #ef4444;"></i> Frequência Cardíaca</span>
+        <span class="valor" id="freq">-- bpm</span>
+      </div>
+      
+      <div class="sensor">
+        <span><i class="fas fa-tint" style="color: #38bdf8;"></i> Oximetria</span>
+        <span class="valor" id="oxi">-- %</span>
+      </div>
+      
+      <div class="sensor">
+        <span><i class="fas fa-thermometer-half" style="color: #f59e0b;"></i> Temperatura</span>
+        <span class="valor" id="temp">-- °C</span>
+      </div>
+      
+      <div class="status-bar">
+        <div>
+          <strong>Última atualização:</strong> 
+          <span id="ultimaAtualizacao">--:--:--</span>
+        </div>
+        <span class="status online" id="status">
+          <i class="fas fa-wifi"></i> CONECTADO
+        </span>
+      </div>
+    </div>
+
+    <!-- Seção de histórico -->
+    <div class="historico-container">
+      <h1><i class="fas fa-history"></i> Histórico de Sensores</h1>
+      
+      <div class="controles">
+        <select id="selectOrdenar">
+          <option value="recente">⬇️ Mais recente primeiro</option>
+          <option value="antigo">⬆️ Mais antigo primeiro</option>
+        </select>
+        
+        <button id="btnAtualizar">
+          <i class="fas fa-sync-alt"></i> Atualizar
+        </button>
+        
+        <button id="btnExportarCSV">
+          <i class="fas fa-file-export"></i> Exportar CSV
+        </button>
+      </div>
+      
+      <div class="tabela-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Data/Hora</th>
+              <th>Frequência Cardíaca</th>
+              <th>Oximetria</th>
+              <th>Temperatura</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaCorpo">
+            <tr>
+              <td colspan="4" style="text-align: center; padding: 40px;">
+                <i class="fas fa-spinner fa-spin"></i> Carregando dados...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <div id="contadorRegistros" style="margin-top: 15px; text-align: center; color: #94a3b8; font-size: 14px;">
+        0 registros encontrados
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    console.log("🚀 Sistema iniciado...");
+    
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDURF1Z7S-O0y1mfc0Sf8sjY9KGLJwkYHY",
+      authDomain: "projeto-integradora-ii.firebaseapp.com",
+      databaseURL: "https://projeto-integradora-ii-default-rtdb.firebaseio.com",
+      projectId: "projeto-integradora-ii",
+      storageBucket: "projeto-integradora-ii.firebasestorage.app",
+      messagingSenderId: "80939508930",
+      appId: "1:80939508930:web:9a2d2f9bf97be9eb98075b"
+    };
+
+    // =============================================
+    // VERIFICAÇÃO DE AUTENTICAÇÃO
+    // =============================================
+    function verificarAutenticacao() {
+      const usuarioLogado = sessionStorage.getItem('usuarioLogado');
+      const loginTime = sessionStorage.getItem('loginTime');
+      
+      if (!usuarioLogado || !loginTime) {
+        console.log('⚠️ Usuário não autenticado. Redirecionando...');
+        window.location.href = 'index.html';
+        return null;
+      }
+      
+      const tempoLogin = new Date(loginTime);
+      const tempoAtual = new Date();
+      const diferencaMinutos = (tempoAtual - tempoLogin) / (1000 * 60);
+      
+      if (diferencaMinutos > 30) {
+        console.log('⏰ Sessão expirada. Redirecionando...');
+        sessionStorage.clear();
+        alert('Sua sessão expirou. Por favor, faça login novamente.');
+        window.location.href = 'index.html';
+        return null;
+      }
+      
+      sessionStorage.setItem('loginTime', new Date().toISOString());
+      
+      return JSON.parse(usuarioLogado);
+    }
+
+    // Verificar autenticação
+    const usuarioAutenticado = verificarAutenticacao();
+    if (!usuarioAutenticado) {
+      console.log('❌ Usuário não autenticado. Encerrando execução.');
+      throw new Error('Usuário não autenticado');
+    }
+
+    console.log(`👤 Usuário autenticado: ${usuarioAutenticado.nome} (${usuarioAutenticado.perfil})`);
+    
+    // Atualizar barra de informações do usuário
+    document.getElementById('loggedUserInfo').textContent = 
+      `${usuarioAutenticado.nome} | ${usuarioAutenticado.perfil}`;
+
+    // Adicionar evento de logout
+    document.getElementById('btnLogout').addEventListener('click', () => {
+      if (confirm('Deseja realmente sair do sistema?')) {
+        sessionStorage.clear();
+        window.location.href = 'index.html';
+      }
+    });
+
+    // =============================================
+    // SISTEMA DE MONITORAMENTO
+    // =============================================
+    try {
+      const app = initializeApp(firebaseConfig);
+      const db = getDatabase(app);
+      
+      // Elementos da página
+      const elementos = {
+        freq: document.getElementById('freq'),
+        oxi: document.getElementById('oxi'),
+        temp: document.getElementById('temp'),
+        nomePaciente: document.getElementById('nomePaciente'),
+        idPaciente: document.getElementById('idPaciente'),
+        sexoPaciente: document.getElementById('sexoPaciente'),
+        tabelaCorpo: document.getElementById('tabelaCorpo'),
+        btnAtualizar: document.getElementById('btnAtualizar'),
+        btnExportarCSV: document.getElementById('btnExportarCSV'),
+        selectOrdenar: document.getElementById('selectOrdenar'),
+        status: document.getElementById('status'),
+        ultimaAtualizacao: document.getElementById('ultimaAtualizacao'),
+        contadorRegistros: document.getElementById('contadorRegistros')
+      };
+
+      // Referências do Firebase
+      const refs = {
+        paciente: ref(db, "Paciente"),
+        sensoresAtuais: ref(db, "sensores_atuais"),
+        historico: ref(db, "sensores_historico")
+      };
+
+      let dadosHistorico = null;
+      let registrosAgrupados = [];
+      let ultimaAtualizacao = new Date();
+
+      // Atualizar timestamp
+      function atualizarTimestamp() {
+        elementos.ultimaAtualizacao.textContent = new Date().toLocaleTimeString('pt-BR');
+      }
+
+      // Carregar dados do paciente
+      onValue(refs.paciente, (snapshot) => {
+        const paciente = snapshot.val();
+        if (paciente) {
+          elementos.nomePaciente.textContent = paciente.nome || "Não informado";
+          elementos.idPaciente.textContent = paciente.id_paciente || "Não informado";
+          elementos.sexoPaciente.textContent = paciente.sexo === 'M' ? 'Masculino' : 
+                                             paciente.sexo === 'F' ? 'Feminino' : 'Não informado';
+        }
+      });
+
+      // Carregar sensores atuais
+      onValue(refs.sensoresAtuais, (snapshot) => {
+        const sensores = snapshot.val();
+        if (sensores) {
+          atualizarSensores(sensores);
+          ultimaAtualizacao = new Date();
+          atualizarTimestamp();
+          elementos.status.className = "status online";
+          elementos.status.innerHTML = '<i class="fas fa-wifi"></i> CONECTADO';
+        }
+      });
+
+      // Carregar histórico
+      onValue(refs.historico, (snapshot) => {
+        dadosHistorico = snapshot.val();
+        if (dadosHistorico) {
+          console.log("📚 Histórico carregado:", dadosHistorico);
+          atualizarTabelaHistorico();
+        }
+      });
+
+      // Atualizar sensores em tempo real
+      function atualizarSensores(sensores) {
+        // Frequência cardíaca
+        if (sensores.freq_cardiaca !== undefined) {
+          elementos.freq.textContent = `${sensores.freq_cardiaca} bpm`;
+          const cor = sensores.freq_cardiaca > 100 || sensores.freq_cardiaca < 60 ? '#ef4444' : '#38bdf8';
+          elementos.freq.style.color = cor;
+          elementos.freq.style.borderColor = cor;
+        }
+        
+        // Oximetria
+        if (sensores.oximetria !== undefined) {
+          elementos.oxi.textContent = `${sensores.oximetria} %`;
+          const cor = sensores.oximetria < 95 ? '#ef4444' : '#38bdf8';
+          elementos.oxi.style.color = cor;
+          elementos.oxi.style.borderColor = cor;
+        }
+        
+        // Temperatura
+        if (sensores.temperatura !== undefined) {
+          elementos.temp.textContent = `${sensores.temperatura} °C`;
+          const cor = sensores.temperatura > 37.5 ? '#ef4444' : '#38bdf8';
+          elementos.temp.style.color = cor;
+          elementos.temp.style.borderColor = cor;
+        }
+      }
+
+      // Atualizar tabela de histórico - AGRUPADO POR DATA/HORA
+      function atualizarTabelaHistorico() {
+        if (!dadosHistorico) return;
+        
+        console.log("🔄 Processando histórico...");
+        
+        const ordenacao = elementos.selectOrdenar.value;
+        
+        // Objeto para agrupar por data/hora
+        const registrosPorData = {};
+        
+        // Processar TODOS os sensores e agrupar por data/hora
+        processarEAgruparDados(dadosHistorico, registrosPorData);
+        
+        // Converter objeto para array
+        registrosAgrupados = Object.values(registrosPorData);
+        
+        console.log(`📊 ${registrosAgrupados.length} registros agrupados por data/hora`);
+        
+        // Ordenar
+        if (ordenacao === 'recente') {
+          registrosAgrupados.sort((a, b) => b.dataCompleta.localeCompare(a.dataCompleta));
+        } else {
+          registrosAgrupados.sort((a, b) => a.dataCompleta.localeCompare(b.dataCompleta));
+        }
+        
+        // Atualizar contador
+        elementos.contadorRegistros.textContent = `${registrosAgrupados.length} registros agrupados`;
+        
+        // Renderizar tabela
+        renderizarTabelaAgrupada(registrosAgrupados);
+      }
+
+      // Processar e agrupar dados por data/hora
+      function processarEAgruparDados(dados, objetoAgrupado) {
+        // Processar frequência cardíaca
+        if (dados.freq_cardiaca) {
+          processarSensorParaAgrupamento('freq_cardiaca', dados.freq_cardiaca, objetoAgrupado);
+        }
+        
+        // Processar oximetria
+        if (dados.oximetria) {
+          processarSensorParaAgrupamento('oximetria', dados.oximetria, objetoAgrupado);
+        }
+        
+        // Processar temperatura
+        if (dados.temperatura) {
+          processarSensorParaAgrupamento('temperatura', dados.temperatura, objetoAgrupado);
+        }
+      }
+
+      // Processar um sensor específico para agrupamento
+      function processarSensorParaAgrupamento(tipo, dadosSensor, objetoAgrupado) {
+        // Para cada data/hora (ex: "1969-12-31_21-00-03")
+        Object.entries(dadosSensor).forEach(([dataHoraString, registrosData]) => {
+          // Para cada registro dentro da data/hora
+          Object.entries(registrosData).forEach(([idRegistro, valor]) => {
+            
+            // Se ainda não tem registro para esta data/hora, criar
+            if (!objetoAgrupado[dataHoraString]) {
+              const dataFormatada = formatarData(dataHoraString);
+              const hora = extrairHora(dataHoraString);
+              
+              objetoAgrupado[dataHoraString] = {
+                dataHoraString: dataHoraString,
+                dataFormatada: `${dataFormatada} ${hora}`,
+                dataCompleta: dataHoraString,
+                freq_cardiaca: '--',
+                oximetria: '--',
+                temperatura: '--'
+              };
+            }
+            
+            // Adicionar o valor do sensor ao registro agrupado
+            if (tipo === 'freq_cardiaca') {
+              objetoAgrupado[dataHoraString].freq_cardiaca = valor;
+            } else if (tipo === 'oximetria') {
+              objetoAgrupado[dataHoraString].oximetria = valor;
+            } else if (tipo === 'temperatura') {
+              objetoAgrupado[dataHoraString].temperatura = valor;
+            }
+          });
+        });
+      }
+
+      // Renderizar tabela com dados agrupados
+      function renderizarTabelaAgrupada(registrosAgrupados) {
+        elementos.tabelaCorpo.innerHTML = '';
+        
+        if (registrosAgrupados.length === 0) {
+          elementos.tabelaCorpo.innerHTML = `
+            <tr>
+              <td colspan="4" style="text-align: center; padding: 40px;">
+                <i class="fas fa-inbox"></i> Nenhum registro encontrado
+              </td>
+            </tr>
+          `;
+          return;
+        }
+        
+        registrosAgrupados.forEach(registro => {
+          const tr = document.createElement('tr');
+          
+          tr.innerHTML = `
+            <td class="data-hora">
+              <i class="far fa-calendar"></i> ${registro.dataFormatada}
+            </td>
+            <td>${registro.freq_cardiaca !== '--' ? registro.freq_cardiaca + ' bpm' : '--'}</td>
+            <td>${registro.oximetria !== '--' ? registro.oximetria + ' %' : '--'}</td>
+            <td>${registro.temperatura !== '--' ? registro.temperatura + ' °C' : '--'}</td>
+          `;
+          
+          elementos.tabelaCorpo.appendChild(tr);
+        });
+      }
+
+      // Funções auxiliares
+      function formatarData(dataHoraString) {
+        if (!dataHoraString.includes('_')) return dataHoraString;
+        
+        const [dataPart, _] = dataHoraString.split('_');
+        const [ano, mes, dia] = dataPart.split('-');
+        
+        return `${dia}/${mes}/${ano}`;
+      }
+
+      function extrairHora(dataHoraString) {
+        if (!dataHoraString.includes('_')) return '';
+        
+        const [_, horaPart] = dataHoraString.split('_');
+        const [hora, minuto, segundo] = horaPart.split('-');
+        
+        return `${hora}:${minuto}:${segundo}`;
+      }
+
+      // Função para exportar dados para CSV
+      function exportarParaCSV() {
+        if (!registrosAgrupados || registrosAgrupados.length === 0) {
+          alert('Não há dados para exportar!');
+          return;
+        }
+        
+        // Definir cabeçalhos do CSV
+        const headers = ['Data/Hora', 'Frequência Cardíaca (bpm)', 'Oximetria (%)', 'Temperatura (°C)'];
+        
+        // Preparar dados do CSV
+        const csvRows = [];
+        
+        // Adicionar cabeçalhos
+        csvRows.push(headers.join(','));
+        
+        // Adicionar dados
+        registrosAgrupados.forEach(registro => {
+          const row = [
+            `"${registro.dataFormatada}"`,
+            registro.freq_cardiaca !== '--' ? registro.freq_cardiaca : '',
+            registro.oximetria !== '--' ? registro.oximetria : '',
+            registro.temperatura !== '--' ? registro.temperatura : ''
+          ];
+          csvRows.push(row.join(','));
+        });
+        
+        // Criar conteúdo CSV
+        const csvContent = csvRows.join('\n');
+        
+        // Criar blob e link para download
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        
+        // Obter data atual para nome do arquivo
+        const dataAtual = new Date().toISOString().split('T')[0];
+        const nomePaciente = elementos.nomePaciente.textContent.replace(/\s+/g, '_');
+        const nomeArquivo = `historico_sensores_${nomePaciente}_${dataAtual}.csv`;
+        
+        // Configurar link de download
+        link.setAttribute('href', url);
+        link.setAttribute('download', nomeArquivo);
+        link.style.visibility = 'hidden';
+        
+        // Adicionar ao documento e simular clique
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Limpar URL
+        URL.revokeObjectURL(url);
+        
+        console.log(`📊 CSV exportado: ${nomeArquivo} (${registrosAgrupados.length} registros)`);
+        alert(`Arquivo CSV exportado com sucesso!\n${nomeArquivo}\n${registrosAgrupados.length} registros exportados.`);
+      }
+
+      // Event Listeners
+      elementos.btnAtualizar.addEventListener('click', () => {
+        console.log("🔄 Atualizando dados...");
+        elementos.tabelaCorpo.innerHTML = `
+          <tr>
+            <td colspan="4" style="text-align: center; padding: 40px;">
+              <i class="fas fa-spinner fa-spin"></i> Atualizando...
+            </td>
+          </tr>
+        `;
+        
+        // Forçar nova leitura
+        const historicoRef = ref(db, "sensores_historico");
+        onValue(historicoRef, (snapshot) => {
+          dadosHistorico = snapshot.val();
+          atualizarTabelaHistorico();
+        }, { onlyOnce: true });
+      });
+
+      elementos.btnExportarCSV.addEventListener('click', exportarParaCSV);
+      
+      elementos.selectOrdenar.addEventListener('change', () => dadosHistorico && atualizarTabelaHistorico());
+
+      // Atualização automática
+      setInterval(atualizarTimestamp, 1000);
+      
+      setInterval(() => {
+        const sensoresRef = ref(db, "sensores_atuais");
+        onValue(sensoresRef, (snapshot) => {
+          const sensores = snapshot.val();
+          if (sensores) {
+            atualizarSensores(sensores);
+            ultimaAtualizacao = new Date();
+          }
+        }, { onlyOnce: true });
+      }, 10000);
+
+      console.log("✅ Sistema pronto!");
+
+    } catch (error) {
+      console.error("❌ Erro:", error);
+      if (error.message !== 'Usuário não autenticado') {
+        elementos.status.className = "status offline";
+        elementos.status.innerHTML = '<i class="fas fa-exclamation-triangle"></i> OFFLINE';
+      }
+    }
+  </script>
+</body>
+</html>
