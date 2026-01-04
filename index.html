@@ -75,7 +75,11 @@
 <body>
   <div class="container">
     <div class="card">
-      <h1>📍 Sensores em Tempo Real</h1>
+      <h1>📍 Monitoramento</h1>
+      <div id="infoPaciente" style="margin-bottom: 20px; padding: 10px; background: #1e293b; border-radius: 8px;">
+        <div><strong>Paciente:</strong> <span id="nomePaciente">--</span></div>
+        <div><strong>ID:</strong> <span id="idPaciente">--</span></div>
+      </div>
       <div class="sensor">
         <span>❤️ Frequência Cardíaca</span>
         <span class="valor" id="freq">-- bpm</span>
@@ -91,7 +95,7 @@
     </div>
 
     <div class="historico-container">
-      <h1>📊 Histórico do Paciente</h1>
+      <h1>📊 Histórico</h1>
       <table>
         <thead>
           <tr>
@@ -104,7 +108,7 @@
         <tbody id="tabelaCorpo">
           <tr>
             <td colspan="4" style="text-align: center; padding: 40px;">
-              Aguardando dados...
+              Carregando...
             </td>
           </tr>
         </tbody>
@@ -113,13 +117,11 @@
   </div>
 
   <script type="module">
-    console.log("=== INICIANDO SCRIPT ===");
+    console.log("=== INICIANDO ===");
     
-    // PASSO 1: Importar Firebase
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    // PASSO 2: Configuração do Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyDURF1Z7S-O0y1mfc0Sf8sjY9KGLJwkYHY",
       authDomain: "projeto-integradora-ii.firebaseapp.com",
@@ -130,126 +132,106 @@
       appId: "1:80939508930:web:9a2d2f9bf97be9eb98075b"
     };
 
-    console.log("📡 Conectando ao Firebase...");
+    console.log("📡 Conectando...");
 
     try {
-      // PASSO 3: Inicializar Firebase
       const app = initializeApp(firebaseConfig);
-      const database = getDatabase(app);
-      console.log("✅ Firebase conectado!");
+      const db = getDatabase(app);
+      console.log("✅ Conectado!");
 
-      // PASSO 4: Pegar elementos da página
       const freqElement = document.getElementById('freq');
       const oxiElement = document.getElementById('oxi');
       const tempElement = document.getElementById('temp');
+      const nomePacienteElement = document.getElementById('nomePaciente');
+      const idPacienteElement = document.getElementById('idPaciente');
       const tabelaCorpo = document.getElementById('tabelaCorpo');
 
-      // PASSO 5: Conectar à raiz do banco
-      const rootRef = ref(database);
+      // CONECTAR DIRETAMENTE AOS SENSORES (estão na raiz!)
+      const sensoresAtuaisRef = ref(db, "sensores_atuais");
+      const historicoRef = ref(db, "sensores_historico");
+      const pacienteRef = ref(db, "Paciente");
+
+      console.log("🔍 Buscando dados do paciente...");
       
-      console.log("🔍 Ouvindo por dados na raiz...");
-      
-      onValue(rootRef, (snapshot) => {
-        const todosDados = snapshot.val();
-        console.log("📦 DADOS RECEBIDOS:", todosDados);
+      // 1. BUSCAR DADOS DO PACIENTE
+      onValue(pacienteRef, (snapshot) => {
+        const paciente = snapshot.val();
+        console.log("👤 Dados do paciente:", paciente);
         
-        if (!todosDados) {
-          console.error("❌ Banco de dados VAZIO!");
-          tabelaCorpo.innerHTML = `
-            <tr>
-              <td colspan="4" style="text-align: center; padding: 40px; color: #ef4444;">
-                ❌ Banco de dados vazio!
-              </td>
-            </tr>
-          `;
-          return;
+        if (paciente) {
+          nomePacienteElement.textContent = paciente.nome || "Não informado";
+          idPacienteElement.textContent = paciente.id_paciente || "Não informado";
         }
+      });
+
+      // 2. BUSCAR DADOS EM TEMPO REAL
+      console.log("🔍 Buscando sensores atuais...");
+      onValue(sensoresAtuaisRef, (snapshot) => {
+        const sensores = snapshot.val();
+        console.log("🔄 Sensores atuais:", sensores);
         
-        // PASSO 6: Encontrar o nome do paciente
-        const nomesPacientes = Object.keys(todosDados);
-        console.log("👤 Pacientes encontrados:", nomesPacientes);
-        
-        if (nomesPacientes.length === 0) {
-          console.error("❌ Nenhum paciente encontrado!");
-          return;
-        }
-        
-        const nomePrimeiroPaciente = nomesPacientes[0];
-        console.log("🎯 Usando paciente:", nomePrimeiroPaciente);
-        
-        const dadosPaciente = todosDados[nomePrimeiroPaciente];
-        console.log("📊 Dados do paciente:", dadosPaciente);
-        
-        // PASSO 7: Atualizar dados em tempo real
-        if (dadosPaciente.sensores_atuais) {
-          const sensores = dadosPaciente.sensores_atuais;
-          console.log("🔄 Dados tempo real:", sensores);
-          
+        if (sensores) {
           // Frequência cardíaca
           if (sensores.freq_cardiaca !== undefined) {
             freqElement.textContent = sensores.freq_cardiaca + " bpm";
-            console.log("❤️ Frequência:", sensores.freq_cardiaca);
+            freqElement.style.color = sensores.freq_cardiaca > 100 || sensores.freq_cardiaca < 60 ? '#ef4444' : '#38bdf8';
           }
           
           // Oximetria
           if (sensores.oximetria !== undefined) {
             oxiElement.textContent = sensores.oximetria + " %";
-            console.log("🩸 Oximetria:", sensores.oximetria);
+            oxiElement.style.color = sensores.oximetria < 95 ? '#ef4444' : '#38bdf8';
           }
           
           // Temperatura
           if (sensores.temperatura !== undefined) {
             tempElement.textContent = sensores.temperatura + " °C";
-            console.log("🌡️ Temperatura:", sensores.temperatura);
+            tempElement.style.color = sensores.temperatura > 37.5 ? '#ef4444' : '#38bdf8';
           }
-        }
-        
-        // PASSO 8: Mostrar histórico
-        if (dadosPaciente.sensores_historico) {
-          console.log("📚 Histórico disponível!");
-          mostrarHistorico(dadosPaciente.sensores_historico);
         } else {
-          console.warn("⚠️ Nenhum histórico encontrado");
+          console.warn("⚠️ Sensores atuais vazios");
+        }
+      });
+
+      // 3. BUSCAR HISTÓRICO
+      console.log("🔍 Buscando histórico...");
+      onValue(historicoRef, (snapshot) => {
+        const historico = snapshot.val();
+        console.log("📚 Histórico completo:", historico);
+        
+        if (!historico) {
+          console.warn("⚠️ Histórico vazio");
           tabelaCorpo.innerHTML = `
             <tr>
               <td colspan="4" style="text-align: center; padding: 40px;">
-                Nenhum histórico disponível
+                Histórico vazio
               </td>
             </tr>
           `;
+          return;
         }
         
-      }, (error) => {
-        console.error("❌ ERRO ao ler dados:", error);
-        tabelaCorpo.innerHTML = `
-          <tr>
-            <td colspan="4" style="text-align: center; padding: 40px; color: #ef4444;">
-              ❌ Erro ao conectar: ${error.message}
-            </td>
-          </tr>
-        `;
+        // Processar histórico
+        mostrarHistorico(historico);
       });
 
       // FUNÇÃO PARA MOSTRAR HISTÓRICO
       function mostrarHistorico(historico) {
-        console.log("📋 Processando histórico:", historico);
+        console.log("📋 Processando histórico...");
         
         // Limpar tabela
         tabelaCorpo.innerHTML = '';
+        let totalRegistros = 0;
         
-        // Verificar se tem dados de frequência cardíaca
+        // 1. FREQUÊNCIA CARDÍACA
         if (historico.freq_cardiaca) {
           console.log("❤️ Histórico de frequência:", historico.freq_cardiaca);
           
-          // Para cada data (ex: "1969-12-31_21-00-03")
           Object.entries(historico.freq_cardiaca).forEach(([dataString, registrosData]) => {
-            console.log(`📅 Data: ${dataString}`, registrosData);
+            console.log(`   Data: ${dataString}`, registrosData);
             
-            // Para cada registro dentro da data
             Object.entries(registrosData).forEach(([idRegistro, valor]) => {
-              console.log(`   ID: ${idRegistro}, Valor: ${valor}`);
-              
-              // Formatar a data
+              // Formatar data
               let dataFormatada = dataString;
               if (dataString.includes('_')) {
                 const [dataPart, horaPart] = dataString.split('_');
@@ -258,7 +240,6 @@
                 dataFormatada = `${dia}/${mes}/${ano} ${hora}:${minuto}:${segundo}`;
               }
               
-              // Criar linha na tabela
               const tr = document.createElement('tr');
               tr.innerHTML = `
                 <td class="data-hora">${dataFormatada}</td>
@@ -267,11 +248,12 @@
                 <td>--</td>
               `;
               tabelaCorpo.appendChild(tr);
+              totalRegistros++;
             });
           });
         }
         
-        // Verificar oximetria
+        // 2. OXIMETRIA
         if (historico.oximetria) {
           console.log("🩸 Histórico de oximetria:", historico.oximetria);
           
@@ -293,11 +275,12 @@
                 <td>--</td>
               `;
               tabelaCorpo.appendChild(tr);
+              totalRegistros++;
             });
           });
         }
         
-        // Verificar temperatura
+        // 3. TEMPERATURA
         if (historico.temperatura) {
           console.log("🌡️ Histórico de temperatura:", historico.temperatura);
           
@@ -319,37 +302,35 @@
                 <td>${valor} °C</td>
               `;
               tabelaCorpo.appendChild(tr);
+              totalRegistros++;
             });
           });
         }
         
-        // Se não adicionou nenhum registro
-        if (tabelaCorpo.children.length === 0) {
-          console.warn("⚠️ Nenhum registro histórico processado");
+        console.log(`✅ Total de registros: ${totalRegistros}`);
+        
+        if (totalRegistros === 0) {
           tabelaCorpo.innerHTML = `
             <tr>
               <td colspan="4" style="text-align: center; padding: 40px;">
-                Histórico vazio
+                Nenhum registro histórico encontrado
               </td>
             </tr>
           `;
-        } else {
-          console.log(`✅ ${tabelaCorpo.children.length} registros exibidos`);
         }
       }
 
+      console.log("✅ Tudo configurado!");
+
     } catch (error) {
-      console.error("❌ ERRO CRÍTICO:", error);
+      console.error("❌ ERRO:", error);
       document.body.innerHTML = `
         <div style="text-align: center; padding: 100px; color: #ef4444;">
-          <h1>ERRO CRÍTICO</h1>
+          <h1>ERRO</h1>
           <p>${error.message}</p>
-          <p>Verifique o console (F12) para detalhes</p>
         </div>
       `;
     }
-    
-    console.log("=== FIM DO SCRIPT ===");
   </script>
 </body>
 </html>
