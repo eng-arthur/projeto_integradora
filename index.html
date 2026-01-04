@@ -9,11 +9,15 @@
       font-family: Arial, sans-serif;
       background: #0f172a;
       color: #e5e7eb;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
       margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      display: flex;
+      gap: 30px;
+      max-width: 1200px;
+      margin: 0 auto;
     }
 
     .card {
@@ -21,6 +25,15 @@
       padding: 30px;
       border-radius: 12px;
       width: 320px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+      flex-shrink: 0;
+    }
+
+    .historico-container {
+      flex: 1;
+      background: #020617;
+      padding: 30px;
+      border-radius: 12px;
       box-shadow: 0 0 20px rgba(0,0,0,0.5);
     }
 
@@ -40,27 +53,139 @@
       font-weight: bold;
       color: #38bdf8;
     }
+
+    .controles {
+      margin: 20px 0;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    select, button {
+      padding: 10px 15px;
+      background: #1e293b;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    button {
+      background: #38bdf8;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #0ea5e9;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    th, td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #334155;
+    }
+
+    th {
+      background: #1e293b;
+    }
+
+    tr:hover {
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    .data-hora {
+      color: #94a3b8;
+      font-size: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .container {
+        flex-direction: column;
+      }
+      
+      .card {
+        width: 100%;
+      }
+    }
   </style>
 </head>
 
 <body>
 
-  <div class="card">
-    <h1>Sensores em Tempo Real</h1>
+  <div class="container">
+    <!-- Card dos sensores em tempo real -->
+    <div class="card">
+      <h1>Sensores em Tempo Real</h1>
 
-    <div class="sensor">
-      <span>❤️ Frequência Cardíaca</span>
-      <span class="valor" id="freq">-- bpm</span>
+      <div class="sensor">
+        <span>❤️ Frequência Cardíaca</span>
+        <span class="valor" id="freq">-- bpm</span>
+      </div>
+
+      <div class="sensor">
+        <span>🩸 Oximetria</span>
+        <span class="valor" id="oxi">-- %</span>
+      </div>
+
+      <div class="sensor">
+        <span>🌡️ Temperatura</span>
+        <span class="valor" id="temp">-- °C</span>
+      </div>
     </div>
 
-    <div class="sensor">
-      <span>🩸 Oximetria</span>
-      <span class="valor" id="oxi">-- %</span>
-    </div>
-
-    <div class="sensor">
-      <span>🌡️ Temperatura</span>
-      <span class="valor" id="temp">-- °C</span>
+    <!-- Seção de histórico -->
+    <div class="historico-container">
+      <h1>📊 Histórico do Paciente</h1>
+      
+      <div class="controles">
+        <select id="selectPaciente">
+          <option value="">Selecione um paciente</option>
+          <!-- Os options serão preenchidos via JavaScript -->
+        </select>
+        
+        <select id="selectSensor">
+          <option value="todos">Todos os sensores</option>
+          <option value="frequencia">Frequência Cardíaca</option>
+          <option value="oximetria">Oximetria</option>
+          <option value="temperatura">Temperatura</option>
+        </select>
+        
+        <select id="selectPeriodo">
+          <option value="24h">Últimas 24 horas</option>
+          <option value="7d">Últimos 7 dias</option>
+          <option value="30d">Últimos 30 dias</option>
+          <option value="tudo">Todo o histórico</option>
+        </select>
+        
+        <button id="btnAtualizar">↻ Atualizar</button>
+      </div>
+      
+      <div id="historicoTabela">
+        <table>
+          <thead>
+            <tr>
+              <th>Data/Hora</th>
+              <th>Frequência Cardíaca</th>
+              <th>Oximetria</th>
+              <th>Temperatura</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaCorpo">
+            <!-- Os dados serão preenchidos via JavaScript -->
+            <tr>
+              <td colspan="4" style="text-align: center; padding: 40px;">
+                Selecione um paciente para visualizar o histórico
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
