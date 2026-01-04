@@ -342,6 +342,10 @@
         <button id="btnAtualizar">
           <i class="fas fa-sync-alt"></i> Atualizar
         </button>
+        
+        <button id="btnExportarCSV">
+          <i class="fas fa-file-export"></i> Exportar CSV
+        </button>
       </div>
       
       <div class="tabela-wrapper">
@@ -400,6 +404,7 @@
         sexoPaciente: document.getElementById('sexoPaciente'),
         tabelaCorpo: document.getElementById('tabelaCorpo'),
         btnAtualizar: document.getElementById('btnAtualizar'),
+        btnExportarCSV: document.getElementById('btnExportarCSV'),
         selectOrdenar: document.getElementById('selectOrdenar'),
         status: document.getElementById('status'),
         ultimaAtualizacao: document.getElementById('ultimaAtualizacao'),
@@ -414,6 +419,7 @@
       };
 
       let dadosHistorico = null;
+      let registrosAgrupados = [];
       let ultimaAtualizacao = new Date();
 
       // Atualizar timestamp
@@ -495,7 +501,7 @@
         processarEAgruparDados(dadosHistorico, registrosPorData);
         
         // Converter objeto para array
-        let registrosAgrupados = Object.values(registrosPorData);
+        registrosAgrupados = Object.values(registrosPorData);
         
         console.log(`📊 ${registrosAgrupados.length} registros agrupados por data/hora`);
         
@@ -555,11 +561,11 @@
             
             // Adicionar o valor do sensor ao registro agrupado
             if (tipo === 'freq_cardiaca') {
-              objetoAgrupado[dataHoraString].freq_cardiaca = `${valor} bpm`;
+              objetoAgrupado[dataHoraString].freq_cardiaca = valor;
             } else if (tipo === 'oximetria') {
-              objetoAgrupado[dataHoraString].oximetria = `${valor} %`;
+              objetoAgrupado[dataHoraString].oximetria = valor;
             } else if (tipo === 'temperatura') {
-              objetoAgrupado[dataHoraString].temperatura = `${valor} °C`;
+              objetoAgrupado[dataHoraString].temperatura = valor;
             }
           });
         });
@@ -587,9 +593,9 @@
             <td class="data-hora">
               <i class="far fa-calendar"></i> ${registro.dataFormatada}
             </td>
-            <td>${registro.freq_cardiaca}</td>
-            <td>${registro.oximetria}</td>
-            <td>${registro.temperatura}</td>
+            <td>${registro.freq_cardiaca !== '--' ? registro.freq_cardiaca + ' bpm' : '--'}</td>
+            <td>${registro.oximetria !== '--' ? registro.oximetria + ' %' : '--'}</td>
+            <td>${registro.temperatura !== '--' ? registro.temperatura + ' °C' : '--'}</td>
           `;
           
           elementos.tabelaCorpo.appendChild(tr);
@@ -615,6 +621,63 @@
         return `${hora}:${minuto}:${segundo}`;
       }
 
+      // Função para exportar dados para CSV
+      function exportarParaCSV() {
+        if (!registrosAgrupados || registrosAgrupados.length === 0) {
+          alert('Não há dados para exportar!');
+          return;
+        }
+        
+        // Definir cabeçalhos do CSV
+        const headers = ['Data/Hora', 'Frequência Cardíaca (bpm)', 'Oximetria (%)', 'Temperatura (°C)'];
+        
+        // Preparar dados do CSV
+        const csvRows = [];
+        
+        // Adicionar cabeçalhos
+        csvRows.push(headers.join(','));
+        
+        // Adicionar dados
+        registrosAgrupados.forEach(registro => {
+          const row = [
+            `"${registro.dataFormatada}"`,
+            registro.freq_cardiaca !== '--' ? registro.freq_cardiaca : '',
+            registro.oximetria !== '--' ? registro.oximetria : '',
+            registro.temperatura !== '--' ? registro.temperatura : ''
+          ];
+          csvRows.push(row.join(','));
+        });
+        
+        // Criar conteúdo CSV
+        const csvContent = csvRows.join('\n');
+        
+        // Criar blob e link para download
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        
+        // Obter data atual para nome do arquivo
+        const dataAtual = new Date().toISOString().split('T')[0];
+        const nomePaciente = elementos.nomePaciente.textContent.replace(/\s+/g, '_');
+        const nomeArquivo = `historico_sensores_${nomePaciente}_${dataAtual}.csv`;
+        
+        // Configurar link de download
+        link.setAttribute('href', url);
+        link.setAttribute('download', nomeArquivo);
+        link.style.visibility = 'hidden';
+        
+        // Adicionar ao documento e simular clique
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Limpar URL
+        URL.revokeObjectURL(url);
+        
+        console.log(`📊 CSV exportado: ${nomeArquivo} (${registrosAgrupados.length} registros)`);
+        alert(`Arquivo CSV exportado com sucesso!\n${nomeArquivo}\n${registrosAgrupados.length} registros exportados.`);
+      }
+
       // Event Listeners
       elementos.btnAtualizar.addEventListener('click', () => {
         console.log("🔄 Atualizando dados...");
@@ -634,6 +697,8 @@
         }, { onlyOnce: true });
       });
 
+      elementos.btnExportarCSV.addEventListener('click', exportarParaCSV);
+      
       elementos.selectOrdenar.addEventListener('change', () => dadosHistorico && atualizarTabelaHistorico());
 
       // Atualização automática
