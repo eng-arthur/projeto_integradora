@@ -474,70 +474,6 @@
       border-radius: 8px;
       border: 1px solid rgba(56, 189, 248, 0.1);
     }
-    
-    /* Estilos para controle da ESP */
-    .esp-control-buttons {
-      display: flex;
-      gap: 10px;
-      margin-top: 15px;
-    }
-    
-    .btn-esp-start {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex: 1;
-      justify-content: center;
-    }
-    
-    .btn-esp-stop {
-      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex: 1;
-      justify-content: center;
-    }
-    
-    .btn-esp-start:hover, .btn-esp-stop:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    }
-    
-    .esp-status-indicator {
-      display: inline-block;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      margin-right: 8px;
-    }
-    
-    .esp-status-active {
-      background-color: #10b981;
-      animation: pulse 2s infinite;
-    }
-    
-    .esp-status-inactive {
-      background-color: #ef4444;
-    }
-    
-    .esp-status-text {
-      font-weight: 600;
-      margin-left: 5px;
-    }
   </style>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Adicionar Chart.js para gráficos -->
@@ -581,33 +517,6 @@
         <span class="valor" id="temp">-- °C</span>
       </div>
       
-      <!-- Controle da ESP -->
-      <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(56, 189, 248, 0.1);">
-        <h3 style="color: #38bdf8; text-align: center; margin-bottom: 15px;">
-          <i class="fas fa-microchip"></i> Controle da ESP8266
-        </h3>
-        
-        <div style="text-align: center; margin-bottom: 15px; padding: 10px; background: rgba(30, 41, 59, 0.5); border-radius: 8px;">
-          <div>
-            <span class="esp-status-indicator" id="espStatusIndicator"></span>
-            <span class="esp-status-text" id="espStatusText">Carregando...</span>
-          </div>
-          <div style="color: #94a3b8; font-size: 13px; margin-top: 5px;" id="espLastUpdate">
-            Última atualização: --
-          </div>
-        </div>
-        
-        <div class="esp-control-buttons">
-          <button class="btn-esp-start" onclick="controlarESP('START')">
-            <i class="fas fa-play"></i> Iniciar Envio
-          </button>
-          
-          <button class="btn-esp-stop" onclick="controlarESP('STOP')">
-            <i class="fas fa-stop"></i> Parar Envio
-          </button>
-        </div>
-      </div>
-      
       <div class="status-bar">
         <div>
           <strong>Última atualização:</strong> 
@@ -616,38 +525,6 @@
         <span class="status online" id="status">
           <i class="fas fa-wifi"></i> CONECTADO
         </span>
-      </div>
-    </div>
-
-    <!-- Card de Controle Adicional (OPCIONAL) -->
-    <div class="card">
-      <h1><i class="fas fa-sliders-h"></i> Configurações</h1>
-      
-      <div style="margin-bottom: 20px;">
-        <h3 style="color: #38bdf8; margin-bottom: 10px;">Status do Sistema</h3>
-        <div style="background: rgba(30, 41, 59, 0.5); padding: 15px; border-radius: 8px;">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-            <span>ESP8266:</span>
-            <span id="espStatusDisplay" style="font-weight: bold;">--</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-            <span>Firebase:</span>
-            <span id="firebaseStatus" style="font-weight: bold; color: #10b981;">Conectado</span>
-          </div>
-          <div style="display: flex; justify-content: space-between;">
-            <span>Dados em tempo real:</span>
-            <span id="realtimeStatus" style="font-weight: bold; color: #10b981;">Ativo</span>
-          </div>
-        </div>
-      </div>
-      
-      <div>
-        <h3 style="color: #38bdf8; margin-bottom: 10px;">Log de Comandos</h3>
-        <div style="background: rgba(30, 41, 59, 0.5); padding: 15px; border-radius: 8px; height: 150px; overflow-y: auto; font-family: monospace; font-size: 12px;">
-          <div id="espCommandLog">
-            <div>> Aguardando comandos...</div>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -719,7 +596,7 @@
     console.log("🚀 Sistema iniciado...");
     
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDURF1Z7S-O0y1mfc0Sf8sjY9KGLJwkYHY",
@@ -781,154 +658,6 @@
         window.location.href = 'index.html';
       }
     });
-
-    // =============================================
-    // CONTROLE DA ESP
-    // =============================================
-    let espMonitoringActive = false;
-    
-    // Função para controlar a ESP
-    function controlarESP(acao) {
-      const db = getDatabase();
-      const comandoRef = ref(db, 'esp_controle/comando');
-      
-      console.log(`📡 Enviando comando para ESP: ${acao}`);
-      
-      // Adiciona ao log
-      adicionarLogComando(`> Enviando comando: ${acao}`);
-      
-      // Envia comando para ESP
-      set(comandoRef, true)
-        .then(() => {
-          console.log(`✅ Comando ${acao} enviado com sucesso`);
-          adicionarLogComando(`✅ Comando ${acao} enviado com sucesso`);
-          
-          // Atualiza display
-          document.getElementById('espStatusDisplay').textContent = 
-            acao === 'START' ? 'INICIANDO...' : 'PARANDO...';
-          
-          // Mostra notificação
-          mostrarNotificacao(`Comando "${acao}" enviado para ESP!`, 'success');
-        })
-        .catch((error) => {
-          console.error('❌ Erro ao enviar comando:', error);
-          adicionarLogComando(`❌ Erro ao enviar comando: ${error.message}`);
-          mostrarNotificacao('Erro ao enviar comando para ESP!', 'error');
-        });
-    }
-    
-    // Função para mostrar notificação
-    function mostrarNotificacao(mensagem, tipo) {
-      const notificacao = document.createElement('div');
-      notificacao.textContent = mensagem;
-      notificacao.style.cssText = `
-        position: fixed; top: 20px; right: 20px; 
-        background: ${tipo === 'success' ? '#10b981' : '#ef4444'}; 
-        color: white; padding: 12px 20px; border-radius: 8px;
-        z-index: 10000; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        animation: slideIn 0.3s ease-out;
-      `;
-      
-      // Adiciona animação CSS
-      const style = document.createElement('style');
-      style.textContent = `
-        @keyframes slideIn {
-          from { transform: translateX(100%); opacity: 0; }
-          to { transform: translateX(0); opacity: 1; }
-        }
-      `;
-      document.head.appendChild(style);
-      
-      document.body.appendChild(notificacao);
-      
-      // Remove após 3 segundos
-      setTimeout(() => {
-        notificacao.style.animation = 'slideOut 0.3s ease-out';
-        setTimeout(() => {
-          document.body.removeChild(notificacao);
-          document.head.removeChild(style);
-        }, 300);
-      }, 3000);
-    }
-    
-    // Função para adicionar log
-    function adicionarLogComando(mensagem) {
-      const logContainer = document.getElementById('espCommandLog');
-      const logEntry = document.createElement('div');
-      
-      const agora = new Date();
-      const timestamp = `${agora.getHours().toString().padStart(2, '0')}:${agora.getMinutes().toString().padStart(2, '0')}:${agora.getSeconds().toString().padStart(2, '0')}`;
-      
-      logEntry.innerHTML = `<span style="color: #94a3b8;">[${timestamp}]</span> ${mensagem}`;
-      logContainer.appendChild(logEntry);
-      
-      // Mantém apenas os últimos 10 logs
-      if (logContainer.children.length > 10) {
-        logContainer.removeChild(logContainer.firstChild);
-      }
-      
-      // Scroll para baixo
-      logContainer.scrollTop = logContainer.scrollHeight;
-    }
-    
-    // Função para monitorar status da ESP
-    function iniciarMonitoramentoESP() {
-      if (espMonitoringActive) return;
-      
-      try {
-        const db = getDatabase();
-        const statusRef = ref(db, 'esp_controle/enviando_dados');
-        const atualizacaoRef = ref(db, 'esp_controle/ultima_atualizacao');
-        
-        // Monitora status de envio
-        onValue(statusRef, (snapshot) => {
-          const enviando = snapshot.val();
-          const indicator = document.getElementById('espStatusIndicator');
-          const statusText = document.getElementById('espStatusText');
-          const statusDisplay = document.getElementById('espStatusDisplay');
-          
-          if (enviando === true) {
-            indicator.className = 'esp-status-indicator esp-status-active';
-            statusText.textContent = 'ENVIANDO DADOS';
-            statusText.style.color = '#10b981';
-            if (statusDisplay) statusDisplay.textContent = 'ATIVO';
-          } else if (enviando === false) {
-            indicator.className = 'esp-status-indicator esp-status-inactive';
-            statusText.textContent = 'PAUSADO';
-            statusText.style.color = '#ef4444';
-            if (statusDisplay) statusDisplay.textContent = 'PAUSADO';
-          } else {
-            indicator.className = 'esp-status-indicator';
-            statusText.textContent = 'DESCONHECIDO';
-            statusText.style.color = '#94a3b8';
-            if (statusDisplay) statusDisplay.textContent = '--';
-          }
-        });
-        
-        // Monitora última atualização
-        onValue(atualizacaoRef, (snapshot) => {
-          const timestamp = snapshot.val();
-          const elemento = document.getElementById('espLastUpdate');
-          
-          if (elemento && timestamp) {
-            elemento.textContent = `Última atualização: ${timestamp}`;
-          }
-        });
-        
-        espMonitoringActive = true;
-        console.log('✅ Monitoramento da ESP iniciado');
-        adicionarLogComando('✅ Monitoramento da ESP iniciado');
-        
-      } catch (error) {
-        console.error('❌ Erro no monitoramento da ESP:', error);
-        adicionarLogComando(`❌ Erro no monitoramento: ${error.message}`);
-      }
-    }
-    
-    // Inicia monitoramento após 2 segundos
-    setTimeout(() => {
-      iniciarMonitoramentoESP();
-    }, 2000);
 
     // =============================================
     // ALTERNÂNCIA ENTRE TABELA E GRÁFICO
