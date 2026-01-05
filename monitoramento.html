@@ -330,8 +330,63 @@
     .tabela-wrapper::-webkit-scrollbar-thumb:hover {
       background: #0ea5e9;
     }
+    
+    /* NOVOS ESTILOS PARA ALTERNÂNCIA TABELA/GRÁFICO */
+    .toggle-visualizacao {
+      display: flex;
+      gap: 2px;
+      background: rgba(30, 41, 59, 0.8);
+      padding: 4px;
+      border-radius: 10px;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+    
+    .btn-visualizacao {
+      padding: 10px 20px;
+      background: transparent;
+      color: #94a3b8;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    
+    .btn-visualizacao.active {
+      background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%);
+      color: white;
+      box-shadow: 0 2px 8px rgba(56, 189, 248, 0.3);
+    }
+    
+    .btn-visualizacao:hover:not(.active) {
+      background: rgba(56, 189, 248, 0.1);
+      color: #e5e7eb;
+    }
+    
+    /* Container do gráfico */
+    .grafico-container {
+      background: rgba(2, 6, 23, 0.7);
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid rgba(56, 189, 248, 0.1);
+      height: 400px;
+      display: none;
+    }
+    
+    .visualizacao-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
   </style>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Adicionar Chart.js para gráficos -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <!-- Barra superior com informações do usuário -->
@@ -387,6 +442,16 @@
       <h1><i class="fas fa-history"></i> Histórico de Sensores</h1>
       
       <div class="controles">
+        <!-- Botões para alternar entre tabela e gráfico -->
+        <div class="toggle-visualizacao">
+          <button class="btn-visualizacao active" data-tipo="tabela">
+            <i class="fas fa-table"></i> Tabela
+          </button>
+          <button class="btn-visualizacao" data-tipo="grafico">
+            <i class="fas fa-chart-line"></i> Gráfico
+          </button>
+        </div>
+        
         <select id="selectOrdenar">
           <option value="recente">⬇️ Mais recente primeiro</option>
           <option value="antigo">⬆️ Mais antigo primeiro</option>
@@ -401,28 +466,37 @@
         </button>
       </div>
       
-      <div class="tabela-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>Data/Hora</th>
-              <th>Frequência Cardíaca</th>
-              <th>Oximetria</th>
-              <th>Temperatura</th>
-            </tr>
-          </thead>
-          <tbody id="tabelaCorpo">
-            <tr>
-              <td colspan="4" style="text-align: center; padding: 40px;">
-                <i class="fas fa-spinner fa-spin"></i> Carregando dados...
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      
-      <div id="contadorRegistros" style="margin-top: 15px; text-align: center; color: #94a3b8; font-size: 14px;">
-        0 registros encontrados
+      <!-- Container para as visualizações -->
+      <div class="visualizacao-container">
+        <!-- Container da tabela (visível por padrão) -->
+        <div class="tabela-wrapper" id="tabelaContainer">
+          <table>
+            <thead>
+              <tr>
+                <th>Data/Hora</th>
+                <th>Frequência Cardíaca</th>
+                <th>Oximetria</th>
+                <th>Temperatura</th>
+              </tr>
+            </thead>
+            <tbody id="tabelaCorpo">
+              <tr>
+                <td colspan="4" style="text-align: center; padding: 40px;">
+                  <i class="fas fa-spinner fa-spin"></i> Carregando dados...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Container do gráfico (oculto por padrão) -->
+        <div class="grafico-container" id="graficoContainer">
+          <canvas id="graficoLinhas"></canvas>
+        </div>
+        
+        <div id="contadorRegistros" style="margin-top: 15px; text-align: center; color: #94a3b8; font-size: 14px;">
+          0 registros encontrados
+        </div>
       </div>
     </div>
   </div>
@@ -463,7 +537,7 @@
       if (diferencaMinutos > 30) {
         console.log('⏰ Sessão expirada. Redirecionando...');
         sessionStorage.clear();
-        alert('Sua sessão expirou. Por favor, faça login novamente.');
+        alert('Sua sessão expirada. Por favor, faça login novamente.');
         window.location.href = 'index.html';
         return null;
       }
@@ -493,6 +567,204 @@
         window.location.href = 'index.html';
       }
     });
+
+    // =============================================
+    // ALTERNÂNCIA ENTRE TABELA E GRÁFICO
+    // =============================================
+    const tabelaContainer = document.getElementById('tabelaContainer');
+    const graficoContainer = document.getElementById('graficoContainer');
+    const btnVisualizacoes = document.querySelectorAll('.btn-visualizacao');
+    let graficoLinhas = null;
+    let registrosAgrupados = [];
+
+    // Event listeners para botões de alternância
+    btnVisualizacoes.forEach(btn => {
+      btn.addEventListener('click', function() {
+        // Remover classe active de todos os botões
+        btnVisualizacoes.forEach(b => b.classList.remove('active'));
+        
+        // Adicionar classe active ao botão clicado
+        this.classList.add('active');
+        
+        const tipo = this.dataset.tipo;
+        
+        // Alternar entre tabela e gráfico
+        if (tipo === 'tabela') {
+          tabelaContainer.style.display = 'block';
+          graficoContainer.style.display = 'none';
+        } else if (tipo === 'grafico') {
+          tabelaContainer.style.display = 'none';
+          graficoContainer.style.display = 'block';
+          
+          // Se já tiver dados, renderizar gráfico
+          if (registrosAgrupados && registrosAgrupados.length > 0) {
+            renderizarGrafico(registrosAgrupados);
+          } else {
+            graficoContainer.innerHTML = `
+              <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #94a3b8;">
+                <i class="fas fa-chart-line fa-3x" style="margin-bottom: 20px;"></i>
+                <p>Carregando dados para o gráfico...</p>
+              </div>
+            `;
+          }
+        }
+      });
+    });
+
+    // Função para renderizar gráfico
+    function renderizarGrafico(dadosAgrupados) {
+      // Limitar a 30 pontos para melhor performance
+      const dadosLimitados = dadosAgrupados.slice(0, 30);
+      
+      // Inverter ordem para mostrar do mais antigo ao mais recente no gráfico
+      const dadosOrdenados = [...dadosLimitados].reverse();
+      
+      // Preparar dados para o gráfico
+      const labels = dadosOrdenados.map(d => {
+        // Formatar data para exibição mais curta (apenas hora)
+        const [data, hora] = d.dataFormatada.split(' ');
+        return `${hora}`;
+      });
+      
+      const dadosFreq = dadosOrdenados.map(d => {
+        const valor = d.freq_cardiaca === '--' ? null : parseFloat(d.freq_cardiaca);
+        return valor;
+      });
+      
+      const dadosOxi = dadosOrdenados.map(d => {
+        const valor = d.oximetria === '--' ? null : parseFloat(d.oximetria);
+        return valor;
+      });
+      
+      const dadosTemp = dadosOrdenados.map(d => {
+        const valor = d.temperatura === '--' ? null : parseFloat(d.temperatura);
+        return valor;
+      });
+      
+      // Verificar se já existe um gráfico e destruir
+      if (graficoLinhas) {
+        graficoLinhas.destroy();
+      }
+      
+      // Criar canvas se não existir
+      if (!document.getElementById('graficoLinhas')) {
+        graficoContainer.innerHTML = '<canvas id="graficoLinhas"></canvas>';
+      }
+      
+      const ctx = document.getElementById('graficoLinhas').getContext('2d');
+      
+      // Configurar gradiente para o gráfico
+      const gradientFreq = ctx.createLinearGradient(0, 0, 0, 400);
+      gradientFreq.addColorStop(0, 'rgba(239, 68, 68, 0.6)');
+      gradientFreq.addColorStop(1, 'rgba(239, 68, 68, 0.1)');
+      
+      const gradientOxi = ctx.createLinearGradient(0, 0, 0, 400);
+      gradientOxi.addColorStop(0, 'rgba(56, 189, 248, 0.6)');
+      gradientOxi.addColorStop(1, 'rgba(56, 189, 248, 0.1)');
+      
+      const gradientTemp = ctx.createLinearGradient(0, 0, 0, 400);
+      gradientTemp.addColorStop(0, 'rgba(245, 158, 11, 0.6)');
+      gradientTemp.addColorStop(1, 'rgba(245, 158, 11, 0.1)');
+      
+      // Criar o gráfico
+      graficoLinhas = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Frequência Cardíaca (bpm)',
+              data: dadosFreq,
+              borderColor: '#ef4444',
+              backgroundColor: gradientFreq,
+              borderWidth: 3,
+              fill: true,
+              tension: 0.4,
+              pointRadius: 3,
+              pointHoverRadius: 6,
+              pointBackgroundColor: '#ef4444'
+            },
+            {
+              label: 'Oximetria (%)',
+              data: dadosOxi,
+              borderColor: '#38bdf8',
+              backgroundColor: gradientOxi,
+              borderWidth: 3,
+              fill: true,
+              tension: 0.4,
+              pointRadius: 3,
+              pointHoverRadius: 6,
+              pointBackgroundColor: '#38bdf8'
+            },
+            {
+              label: 'Temperatura (°C)',
+              data: dadosTemp,
+              borderColor: '#f59e0b',
+              backgroundColor: gradientTemp,
+              borderWidth: 3,
+              fill: true,
+              tension: 0.4,
+              pointRadius: 3,
+              pointHoverRadius: 6,
+              pointBackgroundColor: '#f59e0b'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                color: '#e5e7eb',
+                font: {
+                  size: 12
+                },
+                padding: 20
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.9)',
+              titleColor: '#38bdf8',
+              bodyColor: '#e5e7eb',
+              borderColor: '#38bdf8',
+              borderWidth: 1,
+              cornerRadius: 8,
+              padding: 12
+            }
+          },
+          scales: {
+            x: {
+              grid: {
+                color: 'rgba(56, 189, 248, 0.1)'
+              },
+              ticks: {
+                color: '#94a3b8',
+                maxRotation: 45
+              }
+            },
+            y: {
+              grid: {
+                color: 'rgba(56, 189, 248, 0.1)'
+              },
+              ticks: {
+                color: '#94a3b8'
+              },
+              beginAtZero: false
+            }
+          },
+          interaction: {
+            intersect: false,
+            mode: 'index'
+          },
+          animation: {
+            duration: 750,
+            easing: 'easeOutQuart'
+          }
+        }
+      });
+    }
 
     // =============================================
     // SISTEMA DE MONITORAMENTO
@@ -526,7 +798,6 @@
       };
 
       let dadosHistorico = null;
-      let registrosAgrupados = [];
       let ultimaAtualizacao = new Date();
 
       // Atualizar timestamp
@@ -624,6 +895,12 @@
         
         // Renderizar tabela
         renderizarTabelaAgrupada(registrosAgrupados);
+        
+        // Se estiver na visualização de gráfico, atualizar gráfico também
+        const btnGraficoAtivo = document.querySelector('.btn-visualizacao[data-tipo="grafico"].active');
+        if (btnGraficoAtivo && registrosAgrupados.length > 0) {
+          renderizarGrafico(registrosAgrupados);
+        }
       }
 
       // Processar e agrupar dados por data/hora
